@@ -22,15 +22,17 @@ FloatingWindow {
 
   readonly property var cfg: store ? store.cfg : Model.resolveSettings({})
   readonly property var cal: store ? store.calendar : ({})
+  // Sidebar order: the bar itself, then each extra (in the order of the
+  // switches in Bar extras), then what the panel shows. `group` starts a group.
   readonly property var sections: [
-    { id: "datetime", label: "Date & time", icon: "clock" },
+    { id: "datetime", label: "Date & time", icon: "clock", group: "Bar" },
     { id: "extras", label: "Bar extras", icon: "plus" },
-    { id: "event", label: "Next event", icon: "calendar" },
+    { id: "appearance", label: "Appearance", icon: "palette" },
+    { id: "event", label: "Next event", icon: "calendar", group: "Extras" },
     { id: "timer", label: "Timer", icon: "timer" },
     { id: "media", label: "Media", icon: "media" },
     { id: "weather", label: "Weather", icon: "sun" },
-    { id: "appearance", label: "Appearance", icon: "palette" },
-    { id: "calendars", label: "Calendars", icon: "calendar-plus" },
+    { id: "calendars", label: "Calendars", icon: "calendar-plus", group: "Panel" },
     { id: "agenda", label: "Agenda", icon: "calendar" },
     { id: "clocks", label: "World clocks", icon: "globe" }
   ]
@@ -117,14 +119,32 @@ FloatingWindow {
 
         Repeater {
           model: win.sections
-          ActionButton {
+          Column {
+            id: navItem
             required property var modelData
             width: parent.width
-            leftAlign: true
-            icon: modelData.icon
-            text: modelData.label
-            selected: win.section === modelData.id
-            onClicked: win.section = modelData.id
+            spacing: Style.space(2)
+
+            // A small caption where a new group starts.
+            PText {
+              visible: !!navItem.modelData.group
+              width: parent.width
+              topPadding: navItem.modelData.group === "Bar" ? 0 : Style.space(12)
+              leftPadding: Style.space(12)
+              text: (navItem.modelData.group || "").toUpperCase()
+              font.pixelSize: Style.font.caption
+              font.bold: true
+              elide: Text.ElideNone
+              tone: Qt.alpha(Color.popups.text, 0.4)
+            }
+            ActionButton {
+              width: parent.width
+              leftAlign: true
+              icon: navItem.modelData.icon
+              text: navItem.modelData.label
+              selected: win.section === navItem.modelData.id
+              onClicked: win.section = navItem.modelData.id
+            }
           }
         }
       }
