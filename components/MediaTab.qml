@@ -45,7 +45,7 @@ Item {
 
   // Visualizer style: step to the previous / next and keep the choice.
   readonly property string vizStyle: store.cfg.visualizerStyle
-  function stepVisualizer(delta) { if (host) host.persist({ visualizerStyle: Model.vizStep(vizStyle, delta) }) }
+  function stepVisualizer(delta) { if (host) host.persist({ visualizerStyle: Model.vizStep(vizStyle, delta, store.cfg.vizChoices) }) }
 
   // Follow an app and bring its window up front (the panel gets out of the way).
   function pickApp(player) {

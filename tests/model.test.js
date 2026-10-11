@@ -30,6 +30,14 @@ ok("visualizer style", M.resolveSettings({}).visualizerStyle === "bars" && M.VIZ
 ok("viz labels", M.VIZ_STYLES.every(v => M.vizLabel(v).length > 0 && M.vizLabel(v)[0] === M.vizLabel(v)[0].toUpperCase()) && M.vizLabel("fire") === "Fire" && M.vizLabel("none") === "None" && M.vizLabel("nope") === "Bars");
 ok("viz step wraps both ways", M.vizStep("bars", 1) === "mirror" && M.vizStep("bars", -1) === "none" && M.vizStep("fire", 1) === "none" && M.vizStep("none", 1) === "bars" && M.vizStep("dots", -1) === "mirror" && M.vizStep("bars", 7) === "bars" && M.vizStep("bars", -8) === "none");
 ok("viz step from an unknown style starts at the first", M.vizStep("nope", 1) === "mirror" && M.vizStep(undefined, 0) === "bars");
+const pv = (raw, cur) => M.parseVisualizers(raw, cur).join();
+ok("visualizers: heavy ones start off", pv(undefined, "bars") === "bars,mirror,wave,line" && pv(null, "wave") === "bars,mirror,wave,line");
+ok("visualizers: a heavy style already in use stays on", pv(undefined, "dots") === "bars,mirror,dots,wave,line" && pv(undefined, "fire") === "bars,mirror,wave,line,fire");
+ok("visualizers: saved list wins, in canonical order, junk dropped", pv("fire, bars,nope,dots", "bars") === "bars,dots,fire" && pv(["wave", "line"], "dots") === "wave,line" && pv("", "dots") === "" && pv("none", "bars") === "");
+ok("visualizer choices end with none", M.vizChoices(["bars", "wave"]).join() === "bars,wave,none" && M.vizChoices([]).join() === "none" && M.vizChoices(undefined).join() === "none");
+ok("a switched-off style falls back to the first available", M.resolveSettings({ visualizerStyle: "dots", visualizers: "wave,line" }).visualizerStyle === "wave" && M.resolveSettings({ visualizerStyle: "dots", visualizers: "" }).visualizerStyle === "none" && M.resolveSettings({ visualizerStyle: "none", visualizers: "" }).visualizerStyle === "none");
+ok("resolveSettings: defaults and an existing heavy choice", M.resolveSettings({}).vizChoices.join() === "bars,mirror,wave,line,none" && M.resolveSettings({ visualizerStyle: "fire" }).vizChoices.join() === "bars,mirror,wave,line,fire,none" && M.resolveSettings({ visualizerStyle: "fire" }).visualizerStyle === "fire");
+ok("viz step only visits the available styles", M.vizStep("wave", 1, ["bars", "wave", "none"]) === "none" && M.vizStep("none", 1, ["bars", "wave", "none"]) === "bars" && M.vizStep("bars", -1, ["bars", "wave", "none"]) === "none" && M.vizStep("none", 1, ["none"]) === "none");
 const cg = M.cellGrid(900, 120, 48);
 ok("cell grid is square", cg.cols === 48 && cg.pitch === 18.75 && cg.rows === 6 && cg.size < cg.pitch && M.cellGrid(10, 0, 0).rows === 0);
 ok("a grid with no size yet draws nothing (this once asked for 576,000 cells and froze the shell)", [[0, 120], [1, 120], [0, 0], [47, 120], [840, 0], [840, 1], [NaN, 120], [840, NaN]].every(([w, h]) => M.dotGrid(w, h, 48).rows === 0 && M.cellGrid(w, h, 48).rows === 0));

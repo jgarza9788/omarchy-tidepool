@@ -42,7 +42,8 @@
       "notifyMinutes": 5,
       "showMediaStatus": false,
       "miniVisualizer": false,
-      "visualizerStyle": "bars"
+      "visualizerStyle": "bars",
+      "visualizers": "bars,mirror,wave,line"
     },
     "schema": [
       {
@@ -154,6 +155,13 @@
             "description": "Visualizer off: nothing is drawn and cava does not run."
           }
         ]
+      },
+      {
+        "key": "visualizers",
+        "type": "string",
+        "label": "Available visualizers",
+        "description": "Comma-separated styles you can pick from: bars, mirror, dots, wave, line, fire. Dots and fire are heavy and start off. None is always available.",
+        "defaultValue": "bars,mirror,wave,line"
       },
       {
         "key": "extrasShown",

@@ -37,6 +37,20 @@ FloatingWindow {
     { id: "clocks", label: "World clocks", icon: "globe" }
   ]
   function set(values) { if (host) host.persist(values) }
+
+  // Switch a visualizer on or off. If it was the one in use, move to the first
+  // that is still available.
+  function setViz(id, on) {
+    var cur = win.cfg.visualizers.slice()
+    var at = cur.indexOf(id)
+    if (on && at < 0) cur.push(id)
+    if (!on && at >= 0) cur.splice(at, 1)
+    var enabled = Model.VIZ_STYLES.filter(function (v) { return v !== "none" && cur.indexOf(v) >= 0 })
+    var patch = { visualizers: enabled.join(",") }
+    var choices = Model.vizChoices(enabled)
+    if (choices.indexOf(win.cfg.visualizerStyle) < 0) patch.visualizerStyle = choices[0]
+    win.set(patch)
+  }
   title: "Tidepool Settings"
   implicitWidth: Style.space(860)
   implicitHeight: Style.space(640)
@@ -356,7 +370,7 @@ FloatingWindow {
             description: "How the spectrum is drawn, in the Media tab and on the bar. None turns the visualizer off."
             Choice {
               value: win.cfg.visualizerStyle
-              options: [{ value: "bars", label: "Bars" }, { value: "mirror", label: "Mirror" }, { value: "dots", label: "Dots" }, { value: "wave", label: "Wave" }, { value: "line", label: "Line" }, { value: "fire", label: "Fire" }, { value: "none", label: "None" }]
+              options: win.cfg.vizChoices.map(function (v) { return { value: v, label: Model.vizLabel(v) } })
               onPicked: function (v) { win.set({ visualizerStyle: v }) }
             }
           }
@@ -390,6 +404,49 @@ FloatingWindow {
             font.pixelSize: Style.font.bodySmall
             tone: Qt.alpha(Color.popups.text, 0.6)
             text: "Works with any MPRIS player (Spotify, mpv, jellyfin-tui, a browser…). The Media tab in the panel has the full controls."
+          }
+
+          PText { text: "Visualizers"; font.bold: true; tone: Color.accent; topPadding: Style.space(18); bottomPadding: Style.space(2); elide: Text.ElideNone }
+          PText {
+            width: parent.width
+            wrapMode: Text.Wrap
+            elide: Text.ElideNone
+            bottomPadding: Style.space(4)
+            font.pixelSize: Style.font.bodySmall
+            tone: Qt.alpha(Color.popups.text, 0.6)
+            text: "Choose which visualizers you can pick from. None is always available."
+          }
+          SettingRow {
+            label: "Bars"
+            description: "Available in the style picker and the Media tab's \u2039 \u203a switcher."
+            Switch { checked: win.cfg.visualizers.indexOf("bars") >= 0; onToggled: win.setViz("bars", win.cfg.visualizers.indexOf("bars") < 0) }
+          }
+          SettingRow {
+            label: "Mirror"
+            description: "Available in the style picker and the Media tab's \u2039 \u203a switcher."
+            Switch { checked: win.cfg.visualizers.indexOf("mirror") >= 0; onToggled: win.setViz("mirror", win.cfg.visualizers.indexOf("mirror") < 0) }
+          }
+          SettingRow {
+            label: "Dots"
+            description: "Heavy: draws hundreds of animated cells, so it uses noticeably more CPU than the others, on the bar as well as in the tab. Best left off on a laptop battery."
+            warning: true
+            Switch { checked: win.cfg.visualizers.indexOf("dots") >= 0; onToggled: win.setViz("dots", win.cfg.visualizers.indexOf("dots") < 0) }
+          }
+          SettingRow {
+            label: "Wave"
+            description: "Available in the style picker and the Media tab's \u2039 \u203a switcher."
+            Switch { checked: win.cfg.visualizers.indexOf("wave") >= 0; onToggled: win.setViz("wave", win.cfg.visualizers.indexOf("wave") < 0) }
+          }
+          SettingRow {
+            label: "Line"
+            description: "Available in the style picker and the Media tab's \u2039 \u203a switcher."
+            Switch { checked: win.cfg.visualizers.indexOf("line") >= 0; onToggled: win.setViz("line", win.cfg.visualizers.indexOf("line") < 0) }
+          }
+          SettingRow {
+            label: "Fire"
+            description: "Heavy: draws hundreds of animated cells, so it uses noticeably more CPU than the others, on the bar as well as in the tab. Best left off on a laptop battery."
+            warning: true
+            Switch { checked: win.cfg.visualizers.indexOf("fire") >= 0; onToggled: win.setViz("fire", win.cfg.visualizers.indexOf("fire") < 0) }
           }
         }
       }

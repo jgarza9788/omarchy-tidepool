@@ -17,14 +17,33 @@ function glyph(name) { return GLYPH[name] ? String.fromCodePoint(GLYPH[name]) : 
 
 // ── Settings ────────────────────────────────────────────────────────────────
 var VIZ_STYLES = ["bars", "mirror", "dots", "wave", "line", "fire", "none"]
+// Heavier styles draw hundreds of animated cells; they start switched off.
+var VIZ_HEAVY = ["dots", "fire"]
+var VIZ_DEFAULT_ON = ["bars", "mirror", "wave", "line"]
+// Which visualizers are available. `raw` is the saved list (an array or "bars,wave");
+// nothing saved means the defaults, plus a heavy style you had already chosen, so
+// updating never takes away the one you use. "none" is always available.
+function parseVisualizers(raw, current) {
+  var list
+  if (raw === undefined || raw === null) {
+    list = VIZ_DEFAULT_ON.slice()
+    if (VIZ_HEAVY.indexOf(current) >= 0) list.push(current)
+  } else {
+    list = Array.isArray(raw) ? raw : String(raw).split(/[,\s]+/)
+  }
+  return VIZ_STYLES.filter(function (v) { return v !== "none" && list.indexOf(v) >= 0 })
+}
+function vizChoices(enabled) { return (enabled || []).concat(["none"]) }
+
 var VIZ_LABELS = { bars: "Bars", mirror: "Mirror", dots: "Dots", wave: "Wave", line: "Line", fire: "Fire", none: "None" }
 // The name shown for a style, and the style `delta` steps away (wraps round).
 function vizLabel(style) { return VIZ_LABELS[style] || VIZ_LABELS.bars }
-function vizStep(style, delta) {
-  var at = VIZ_STYLES.indexOf(style)
+function vizStep(style, delta, choices) {
+  var list = choices && choices.length ? choices : VIZ_STYLES
+  var at = list.indexOf(style)
   if (at < 0) at = 0
-  var n = VIZ_STYLES.length
-  return VIZ_STYLES[(((at + delta) % n) + n) % n]
+  var n = list.length
+  return list[(((at + delta) % n) + n) % n]
 }
 var EXTRA_STYLES = ["plain", "border", "button"]
 var CLOCK_MODES = ["time", "date", "both"]
@@ -75,6 +94,9 @@ function resolveSettings(raw) {
   out.showMediaStatus = out.showMediaStatus === true || out.showMediaStatus === "true"
   out.miniVisualizer = out.miniVisualizer === true || out.miniVisualizer === "true"
   if (VIZ_STYLES.indexOf(out.visualizerStyle) < 0) out.visualizerStyle = DEFAULTS.visualizerStyle
+  out.visualizers = parseVisualizers(s.visualizers, out.visualizerStyle)
+  out.vizChoices = vizChoices(out.visualizers)
+  if (out.vizChoices.indexOf(out.visualizerStyle) < 0) out.visualizerStyle = out.vizChoices[0]     // a style that was switched off
   if (EXTRA_STYLES.indexOf(out.extraStyle) < 0) out.extraStyle = DEFAULTS.extraStyle
   out.extrasShown = clamp(out.extrasShown, 0, 4, DEFAULTS.extrasShown)
   out.rotateSeconds = clamp(out.rotateSeconds, 2, 60, DEFAULTS.rotateSeconds)
@@ -709,7 +731,7 @@ function zoneCity(zone) {
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
-    loopNext: loopNext, parseBars: parseBars, glyph: glyph, GLYPH: GLYPH, DEFAULTS: DEFAULTS, CLOCK_MODES: CLOCK_MODES, VIZ_STYLES: VIZ_STYLES, vizLabel: vizLabel, vizStep: vizStep, wavePath: wavePath, cellGrid: cellGrid, gridRows: gridRows, noise: noise, fireHeight: fireHeight, fireState: fireState, fireHsl: fireHsl, dotGrid: dotGrid, dotLevel: dotLevel, dotScale: dotScale, EXTRA_STYLES: EXTRA_STYLES, parseColors: parseColors, resolveSettings: resolveSettings, parsePresets: parsePresets, parseZones: parseZones,
+    loopNext: loopNext, parseBars: parseBars, glyph: glyph, GLYPH: GLYPH, DEFAULTS: DEFAULTS, CLOCK_MODES: CLOCK_MODES, VIZ_STYLES: VIZ_STYLES, VIZ_HEAVY: VIZ_HEAVY, VIZ_DEFAULT_ON: VIZ_DEFAULT_ON, parseVisualizers: parseVisualizers, vizChoices: vizChoices, vizLabel: vizLabel, vizStep: vizStep, wavePath: wavePath, cellGrid: cellGrid, gridRows: gridRows, noise: noise, fireHeight: fireHeight, fireState: fireState, fireHsl: fireHsl, dotGrid: dotGrid, dotLevel: dotLevel, dotScale: dotScale, EXTRA_STYLES: EXTRA_STYLES, parseColors: parseColors, resolveSettings: resolveSettings, parsePresets: parsePresets, parseZones: parseZones,
     startOfDay: startOfDay, addDays: addDays, sameDay: sameDay, clock: clock, dayKey: dayKey, span: span, onDay: onDay,
     itemsForDay: itemsForDay, agendaGroups: agendaGroups, agendaTitle: agendaTitle, scrollTarget: scrollTarget, upcoming: upcoming, minutesLabel: minutesLabel, ellipsize: ellipsize,
     chip: chip, whenLabel: whenLabel, timeLabel: timeLabel, extrasFor: extrasFor, extraPageCount: extraPageCount, extraPage: extraPage, clockParts: clockParts, monthGrid: monthGrid, weekdayHeaders: weekdayHeaders, dotsForDay: dotsForDay, dueNotifications: dueNotifications, safeUrl: safeUrl, attendeeSummary: attendeeSummary,

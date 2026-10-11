@@ -8,6 +8,7 @@ Item {
 
   property string label: ""
   property string description: ""
+  property bool warning: false          // draw the description as a warning
   default property alias control: slot.data
 
   width: parent ? parent.width : 0
@@ -24,7 +25,7 @@ Item {
       visible: row.description !== ""
       text: row.description
       font.pixelSize: Style.font.bodySmall
-      tone: Qt.alpha(Color.popups.text, 0.6)
+      tone: row.warning ? Color.urgent : Qt.alpha(Color.popups.text, 0.6)
       wrapMode: Text.Wrap
       elide: Text.ElideNone
     }
