@@ -296,7 +296,7 @@ Item {
       id: pick
       anchors.centerIn: parent
       spacing: Style.space(2)
-      ActionButton { icon: "prev"; tooltip: "Previous visualizer"; onClicked: tab.stepVisualizer(-1) }
+      ActionButton { icon: "left"; tooltip: "Previous visualizer"; onClicked: tab.stepVisualizer(-1) }
       PText {
         anchors.verticalCenter: parent.verticalCenter
         width: Style.space(58)
@@ -306,7 +306,7 @@ Item {
         font.pixelSize: Style.font.bodySmall
         elide: Text.ElideNone
       }
-      ActionButton { icon: "next"; tooltip: "Next visualizer"; onClicked: tab.stepVisualizer(1) }
+      ActionButton { icon: "right"; tooltip: "Next visualizer"; onClicked: tab.stepVisualizer(1) }
     }
   }
 
