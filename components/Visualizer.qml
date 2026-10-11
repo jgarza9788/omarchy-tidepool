@@ -121,7 +121,8 @@ Item {
         readonly property real v: shifted ? (dotsView.band(col) + dotsView.band(col + 1)) / 2 : dotsView.band(col)
         // Same rule as Model.dotLevel / dotScale, inline: this runs for every dot every frame.
         readonly property real level: Math.max(0, Math.min(1, v * dotsView.grid.rows - row))
-        readonly property real d: Math.max(1, dotsView.grid.size * (0.18 + 0.82 * level))
+        // Lit dots swell to 2.5x the grid pitch, so neighbours overlap into soft clusters; resting dots stay tiny.
+        readonly property real d: Math.max(1, dotsView.grid.size * (0.18 + (2.5 - 0.18) * level))
 
         visible: !shifted || col < dotsView.grid.cols - 1
         width: d
@@ -130,7 +131,7 @@ Item {
         x: (col + 0.5 + (shifted ? 0.5 : 0)) * dotsView.grid.pitchX - d / 2
         y: dotsView.height - (row + 0.5) * dotsView.grid.pitchY - d / 2
         color: Color.accent
-        opacity: 0.3 + 0.7 * level
+        opacity: 0.66                     // translucent, so overlapping dots blend instead of going solid
       }
     }
   }
