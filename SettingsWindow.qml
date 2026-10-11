@@ -18,19 +18,21 @@ FloatingWindow {
   // Old section names still work (shell commands, saved links).
   onSectionChanged: if (section === "general") section = "datetime"
     else if (section === "music") section = "media"
+    else if (section === "timers") section = "timer"
 
   readonly property var cfg: store ? store.cfg : Model.resolveSettings({})
   readonly property var cal: store ? store.calendar : ({})
   readonly property var sections: [
     { id: "datetime", label: "Date & time", icon: "clock" },
     { id: "extras", label: "Bar extras", icon: "plus" },
+    { id: "event", label: "Next event", icon: "calendar" },
+    { id: "timer", label: "Timer", icon: "timer" },
     { id: "media", label: "Media", icon: "media" },
+    { id: "weather", label: "Weather", icon: "sun" },
     { id: "appearance", label: "Appearance", icon: "palette" },
     { id: "calendars", label: "Calendars", icon: "calendar-plus" },
     { id: "agenda", label: "Agenda", icon: "calendar" },
-    { id: "weather", label: "Weather", icon: "sun" },
-    { id: "clocks", label: "World clocks", icon: "globe" },
-    { id: "timers", label: "Timers", icon: "timer" }
+    { id: "clocks", label: "World clocks", icon: "globe" }
   ]
   function set(values) { if (host) host.persist(values) }
   title: "Tidepool Settings"
@@ -188,27 +190,23 @@ FloatingWindow {
           PText { text: "What shows after the divider"; font.bold: true; tone: Color.accent; topPadding: Style.space(6); bottomPadding: Style.space(2); elide: Text.ElideNone }
           SettingRow {
             label: "Next event"
-            description: "A chip like \u201cStandup \u00b7 12m\u201d, in the accent colour when it is soon."
+            description: "A chip like \u201cStandup \u00b7 12m\u201d, in the accent colour when it is soon. Options are in the Next event section."
             Switch { checked: win.cfg.showEvent; onToggled: win.set({ showEvent: !win.cfg.showEvent }) }
           }
           SettingRow {
             label: "Timer"
-            description: "The countdown of the soonest running timer."
+            description: "The countdown of the soonest running timer. Options are in the Timer section."
             Switch { checked: win.cfg.showTimer; onToggled: win.set({ showTimer: !win.cfg.showTimer }) }
           }
           SettingRow {
-            label: "Weather"
-            description: "Icon and temperature. Needs a city under Weather."
-            Switch { checked: win.cfg.showWeather; onToggled: win.set({ showWeather: !win.cfg.showWeather }) }
+            label: "Media"
+            description: "What is playing: a track, a video, a podcast. Options are in the Media section."
+            Switch { checked: win.cfg.showMedia; onToggled: win.set({ showMedia: !win.cfg.showMedia }) }
           }
-          PText {
-            width: parent.width
-            topPadding: Style.space(6)
-            wrapMode: Text.Wrap
-            elide: Text.ElideNone
-            font.pixelSize: Style.font.bodySmall
-            tone: Qt.alpha(Color.popups.text, 0.55)
-            text: "The media extra has its own section: Media."
+          SettingRow {
+            label: "Weather"
+            description: "Icon and temperature. Needs a city: set it in the Weather section."
+            Switch { checked: win.cfg.showWeather; onToggled: win.set({ showWeather: !win.cfg.showWeather }) }
           }
           PText { text: "How they show"; font.bold: true; tone: Color.accent; topPadding: Style.space(16); bottomPadding: Style.space(2); elide: Text.ElideNone }
           SettingRow {
@@ -230,7 +228,28 @@ FloatingWindow {
             description: "Seconds per page when extras swap."
             Stepper { value: win.cfg.rotateSeconds; from: 2; to: 60; suffix: " s"; onChanged: function (v) { win.set({ rotateSeconds: v }) } }
           }
-          PText { text: "Next event chip"; font.bold: true; tone: Color.accent; topPadding: Style.space(16); bottomPadding: Style.space(2); elide: Text.ElideNone }
+        }
+      }
+
+      // Next event
+      Flickable {
+        anchors.fill: parent
+        anchors.margins: Style.space(22)
+        visible: win.section === "event"
+        contentHeight: eventPage.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+
+        Column {
+          id: eventPage
+          width: parent.width
+          PText { text: "Next event"; font.pixelSize: Style.font.heading; font.bold: true; elide: Text.ElideNone }
+          Item { width: 1; height: Style.space(8) }
+          SettingRow {
+            label: "Show on the bar"
+            description: "Also switched in Bar extras."
+            Switch { checked: win.cfg.showEvent; onToggled: win.set({ showEvent: !win.cfg.showEvent }) }
+          }
           SettingRow {
             label: "Notify before events"
             description: "A desktop notification this many minutes before an event starts, with the room and call link. 0 turns it off."
@@ -299,7 +318,7 @@ FloatingWindow {
 
           SettingRow {
             label: "Show on the bar"
-            description: "Show what is playing on the bar, after the divider. Turn this off to hide it, whatever the options below say."
+            description: "Also switched in Bar extras. Turn it off and the options below have no effect."
             Switch { checked: win.cfg.showMedia; onToggled: win.set({ showMedia: !win.cfg.showMedia }) }
           }
           SettingRow {
@@ -402,6 +421,11 @@ FloatingWindow {
           PText { text: "Weather"; font.pixelSize: Style.font.heading; font.bold: true; elide: Text.ElideNone }
           Item { width: 1; height: Style.space(8) }
           SettingRow {
+            label: "Show on the bar"
+            description: "Also switched in Bar extras."
+            Switch { checked: win.cfg.showWeather; onToggled: win.set({ showWeather: !win.cfg.showWeather }) }
+          }
+          SettingRow {
             label: "City"
             description: "Start typing and pick from the list. Leave empty to hide weather."
             CityPicker {
@@ -482,11 +506,11 @@ FloatingWindow {
         }
       }
 
-      // Timers
+      // Timer
       Flickable {
         anchors.fill: parent
         anchors.margins: Style.space(22)
-        visible: win.section === "timers"
+        visible: win.section === "timer"
         contentHeight: timers.implicitHeight
         clip: true
         boundsBehavior: Flickable.StopAtBounds
@@ -494,8 +518,13 @@ FloatingWindow {
         Column {
           id: timers
           width: parent.width
-          PText { text: "Timers"; font.pixelSize: Style.font.heading; font.bold: true; elide: Text.ElideNone }
+          PText { text: "Timer"; font.pixelSize: Style.font.heading; font.bold: true; elide: Text.ElideNone }
           Item { width: 1; height: Style.space(8) }
+          SettingRow {
+            label: "Show on the bar"
+            description: "Also switched in Bar extras."
+            Switch { checked: win.cfg.showTimer; onToggled: win.set({ showTimer: !win.cfg.showTimer }) }
+          }
           SettingRow {
             label: "Presets"
             description: "Comma-separated minutes for the quick-start buttons, e.g. 5, 15, 25, 45."
