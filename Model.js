@@ -357,8 +357,7 @@ function dotGrid(w, h, cols) {
   var c = Math.max(1, Math.floor(cols))
   var pitchX = w / c
   var pitchY = pitchX * 0.866            // hex packing: rows sit closer than columns
-  var rows = Math.max(1, Math.floor(h / Math.max(0.01, pitchY)))
-  return { cols: c, rows: rows, pitchX: pitchX, pitchY: pitchY, size: pitchX * 0.86 }
+  return { cols: c, rows: gridRows(pitchX, h, 0.866), pitchX: pitchX, pitchY: pitchY, size: pitchX * 0.86 }
 }
 
 // How "on" the dot in `row` (0 = bottom) is for a band at level `v` (0..1):
@@ -376,7 +375,18 @@ function dotScale(level) { return 0.18 + 0.82 * level }
 function cellGrid(w, h, cols) {
   var c = Math.max(1, Math.floor(cols))
   var pitch = w / c
-  return { cols: c, rows: Math.max(1, Math.floor(h / Math.max(0.01, pitch))), pitch: pitch, size: Math.max(1, pitch * 0.84) }
+  return { cols: c, rows: gridRows(pitch, h, 1), pitch: pitch, size: Math.max(1, pitch * 0.84) }
+}
+
+// How many rows fit in height `h` at row spacing `step`. A grid whose cells would
+// be under 2px (a visualizer that has no size yet, as a tab is being created)
+// draws nothing instead of dividing by almost zero and asking for hundreds of
+// thousands of cells; a tall box is capped.
+var GRID_MAX_ROWS = 40
+var GRID_MIN_PITCH = 2
+function gridRows(pitch, h, step) {
+  if (!(pitch >= GRID_MIN_PITCH) || !(h >= GRID_MIN_PITCH)) return 0
+  return Math.max(1, Math.min(GRID_MAX_ROWS, Math.floor(h / (pitch * step))))
 }
 
 // A cheap deterministic hash noise in [0, 1): the same (a, b, c) always gives
@@ -699,7 +709,7 @@ function zoneCity(zone) {
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
-    loopNext: loopNext, parseBars: parseBars, glyph: glyph, GLYPH: GLYPH, DEFAULTS: DEFAULTS, CLOCK_MODES: CLOCK_MODES, VIZ_STYLES: VIZ_STYLES, vizLabel: vizLabel, vizStep: vizStep, wavePath: wavePath, cellGrid: cellGrid, noise: noise, fireHeight: fireHeight, fireState: fireState, fireHsl: fireHsl, dotGrid: dotGrid, dotLevel: dotLevel, dotScale: dotScale, EXTRA_STYLES: EXTRA_STYLES, parseColors: parseColors, resolveSettings: resolveSettings, parsePresets: parsePresets, parseZones: parseZones,
+    loopNext: loopNext, parseBars: parseBars, glyph: glyph, GLYPH: GLYPH, DEFAULTS: DEFAULTS, CLOCK_MODES: CLOCK_MODES, VIZ_STYLES: VIZ_STYLES, vizLabel: vizLabel, vizStep: vizStep, wavePath: wavePath, cellGrid: cellGrid, gridRows: gridRows, noise: noise, fireHeight: fireHeight, fireState: fireState, fireHsl: fireHsl, dotGrid: dotGrid, dotLevel: dotLevel, dotScale: dotScale, EXTRA_STYLES: EXTRA_STYLES, parseColors: parseColors, resolveSettings: resolveSettings, parsePresets: parsePresets, parseZones: parseZones,
     startOfDay: startOfDay, addDays: addDays, sameDay: sameDay, clock: clock, dayKey: dayKey, span: span, onDay: onDay,
     itemsForDay: itemsForDay, agendaGroups: agendaGroups, agendaTitle: agendaTitle, scrollTarget: scrollTarget, upcoming: upcoming, minutesLabel: minutesLabel, ellipsize: ellipsize,
     chip: chip, whenLabel: whenLabel, timeLabel: timeLabel, extrasFor: extrasFor, extraPageCount: extraPageCount, extraPage: extraPage, clockParts: clockParts, monthGrid: monthGrid, weekdayHeaders: weekdayHeaders, dotsForDay: dotsForDay, dueNotifications: dueNotifications, safeUrl: safeUrl, attendeeSummary: attendeeSummary,

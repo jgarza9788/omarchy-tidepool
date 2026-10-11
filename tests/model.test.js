@@ -31,7 +31,10 @@ ok("viz labels", M.VIZ_STYLES.every(v => M.vizLabel(v).length > 0 && M.vizLabel(
 ok("viz step wraps both ways", M.vizStep("bars", 1) === "mirror" && M.vizStep("bars", -1) === "none" && M.vizStep("fire", 1) === "none" && M.vizStep("none", 1) === "bars" && M.vizStep("dots", -1) === "mirror" && M.vizStep("bars", 7) === "bars" && M.vizStep("bars", -8) === "none");
 ok("viz step from an unknown style starts at the first", M.vizStep("nope", 1) === "mirror" && M.vizStep(undefined, 0) === "bars");
 const cg = M.cellGrid(900, 120, 48);
-ok("cell grid is square", cg.cols === 48 && cg.pitch === 18.75 && cg.rows === 6 && cg.size < cg.pitch && M.cellGrid(10, 0, 0).rows === 1);
+ok("cell grid is square", cg.cols === 48 && cg.pitch === 18.75 && cg.rows === 6 && cg.size < cg.pitch && M.cellGrid(10, 0, 0).rows === 0);
+ok("a grid with no size yet draws nothing (this once asked for 576,000 cells and froze the shell)", [[0, 120], [1, 120], [0, 0], [47, 120], [840, 0], [840, 1], [NaN, 120], [840, NaN]].every(([w, h]) => M.dotGrid(w, h, 48).rows === 0 && M.cellGrid(w, h, 48).rows === 0));
+ok("grids never exceed the row cap", [[960, 4000], [840, 120], [96, 100000], [2000, 2000]].every(([w, h]) => M.dotGrid(w, h, 48).rows <= 40 && M.cellGrid(w, h, 48).rows <= 40 && M.dotGrid(w, h, 48).rows * 48 <= 1920));
+ok("real sizes still get a full grid", M.dotGrid(840, 120, 48).rows === 7 && M.cellGrid(840, 120, 48).rows === 6 && M.dotGrid(22, 12, 8).rows >= 4 && M.cellGrid(22, 12, 8).rows >= 4);
 ok("noise is deterministic and in range", M.noise(3, 4, 5) === M.noise(3, 4, 5) && M.noise(3, 4, 5) !== M.noise(3, 4, 6) && (() => { for (let i = 0; i < 2000; ++i) { const n = M.noise(i, i * 7, i * 13); if (!(n >= 0 && n < 1)) return false } return true })());
 ok("noise is spread out", (() => { let lo = 0, hi = 0; for (let i = 0; i < 4000; ++i) { M.noise(i, 1, 2) < 0.5 ? lo++ : hi++ } return lo > 1700 && hi > 1700 })());
 ok("fire height follows the level and flicker", M.fireHeight(1, 6, 0.5) === 6 && M.fireHeight(0, 6, 1) === 0 && M.fireHeight(0.5, 6, 1) > M.fireHeight(0.5, 6, 0) && M.fireHeight(9, 6, 0.5) === 6 && M.fireHeight(1, 6, 1) === 6);
@@ -44,7 +47,7 @@ ok("fire colours: hot base, accent, neighbours, fading tip", Math.abs(fh(0)[0] -
 ok("fire colours: hue wraps, spark is dimmer, all in range", (() => { const w = M.fireHsl(1, 0.95, 0.6, 0.5); const sp = M.fireHsl(1.5, 0.25, 0.6, 0.5); for (let t = -0.5; t <= 1.6; t += 0.05) for (const h of [0, 0.5, 0.99]) { const c = M.fireHsl(t, h, 1, 0.9); if (c.some(x => !(x >= 0 && x <= 1))) return false } return w[0] >= 0 && w[0] < 1 && Math.abs(sp[3] - fh(1)[3] * 0.6) < 1e-9 })());
 const dg = M.dotGrid(900, 120, 48);
 ok("dot grid: hex packing", dg.cols === 48 && Math.abs(dg.pitchX - 18.75) < 1e-9 && Math.abs(dg.pitchY - 18.75 * 0.866) < 1e-9 && dg.rows === Math.floor(120 / (18.75 * 0.866)) && dg.size < dg.pitchX);
-ok("dot grid: tiny and degenerate boxes", M.dotGrid(22, 12, 8).rows >= 4 && M.dotGrid(10, 0, 4).rows === 1 && M.dotGrid(0, 0, 0).cols === 1);
+ok("dot grid: tiny and degenerate boxes", M.dotGrid(22, 12, 8).rows >= 4 && M.dotGrid(10, 0, 4).rows === 0 && M.dotGrid(0, 0, 0).cols === 1);
 ok("dot level: loud bands light more rows", M.dotLevel(1, 0, 5) === 1 && M.dotLevel(1, 4, 5) === 1 && M.dotLevel(0, 0, 5) === 0 && M.dotLevel(0.5, 0, 4) === 1 && M.dotLevel(0.5, 2, 4) === 0);
 ok("dot level: the top row grows partway", Math.abs(M.dotLevel(0.3, 1, 5) - 0.5) < 1e-9 && Math.abs(M.dotLevel(0.1, 0, 5) - 0.5) < 1e-9);
 ok("dot level: clamps bad input", M.dotLevel(9, 0, 5) === 1 && M.dotLevel(-3, 4, 5) === 0);
