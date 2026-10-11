@@ -47,11 +47,13 @@ Panel {
   function open() {
     root.controller.show()
     Qt.callLater(function () {
-      if (root.opened) setCenterHoverRevealSuppressed(true)
+      try { if (root.opened) setCenterHoverRevealSuppressed(true) } catch (e) { console.warn("tidepool: could not hold the hover reveal:", e) }
     })
   }
   function close() {
-    setCenterHoverRevealSuppressed(false)
+    // Whatever goes wrong here, the panel must still close: a close() that throws
+    // leaves the full-screen overlay mapped and the whole desktop unclickable.
+    try { setCenterHoverRevealSuppressed(false) } catch (e) { console.warn("tidepool: could not release the hover reveal:", e) }
     root.controller.hide()
   }
   function openSettings(section) {
