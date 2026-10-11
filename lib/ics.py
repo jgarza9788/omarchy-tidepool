@@ -65,6 +65,31 @@ def to_local(naive_or_aware):
     return d
 
 
+WINDOWS_ZONES = {
+    "Eastern Standard Time": "America/New_York", "Central Standard Time": "America/Chicago",
+    "Mountain Standard Time": "America/Denver", "Pacific Standard Time": "America/Los_Angeles",
+    "US Mountain Standard Time": "America/Phoenix", "Alaskan Standard Time": "America/Anchorage",
+    "Hawaiian Standard Time": "Pacific/Honolulu", "Atlantic Standard Time": "America/Halifax",
+    "Newfoundland Standard Time": "America/St_Johns", "Canada Central Standard Time": "America/Regina",
+    "Central Standard Time (Mexico)": "America/Mexico_City", "SA Pacific Standard Time": "America/Bogota",
+    "E. South America Standard Time": "America/Sao_Paulo", "Argentina Standard Time": "America/Argentina/Buenos_Aires",
+    "GMT Standard Time": "Europe/London", "Greenwich Standard Time": "Atlantic/Reykjavik",
+    "W. Europe Standard Time": "Europe/Berlin", "Central Europe Standard Time": "Europe/Budapest",
+    "Central European Standard Time": "Europe/Warsaw", "Romance Standard Time": "Europe/Paris",
+    "E. Europe Standard Time": "Europe/Chisinau", "FLE Standard Time": "Europe/Kiev",
+    "GTB Standard Time": "Europe/Bucharest", "Russian Standard Time": "Europe/Moscow",
+    "Turkey Standard Time": "Europe/Istanbul", "Israel Standard Time": "Asia/Jerusalem",
+    "Egypt Standard Time": "Africa/Cairo", "South Africa Standard Time": "Africa/Johannesburg",
+    "Arab Standard Time": "Asia/Riyadh", "Arabian Standard Time": "Asia/Dubai", "India Standard Time": "Asia/Kolkata",
+    "SE Asia Standard Time": "Asia/Bangkok", "China Standard Time": "Asia/Shanghai",
+    "Singapore Standard Time": "Asia/Singapore", "Tokyo Standard Time": "Asia/Tokyo",
+    "Korea Standard Time": "Asia/Seoul", "AUS Eastern Standard Time": "Australia/Sydney",
+    "E. Australia Standard Time": "Australia/Brisbane", "Cen. Australia Standard Time": "Australia/Adelaide",
+    "W. Australia Standard Time": "Australia/Perth", "New Zealand Standard Time": "Pacific/Auckland",
+    "UTC": "UTC", "Coordinated Universal Time": "UTC",
+}
+
+
 def parse_dt(value, params):
     """Return (datetime|date, all_day). Datetimes come back naive-local."""
     value = value.strip()
@@ -79,10 +104,13 @@ def parse_dt(value, params):
         return to_local(base.replace(tzinfo=dt.timezone.utc)), False
     tzid = params.get("TZID")
     if tzid:
-        try:
-            return to_local(base.replace(tzinfo=ZoneInfo(tzid))), False
-        except Exception:
-            pass
+        for name in (tzid, WINDOWS_ZONES.get(tzid.strip('"'), "")):
+            if not name:
+                continue
+            try:
+                return to_local(base.replace(tzinfo=ZoneInfo(name))), False
+            except Exception:
+                continue
     return base, False
 
 
@@ -108,14 +136,23 @@ def _first_of(d):
     return d.date() if isinstance(d, dt.datetime) else d
 
 
+def _int(value, default, lo=None):
+    """int(value), or `default` when it is missing or not a number."""
+    try:
+        n = int(str(value).strip())
+    except (TypeError, ValueError):
+        return default
+    return max(lo, n) if lo is not None else n
+
+
 def expand(start, rule, window_start, window_end, exdates):
     """Yield occurrence starts (same type as `start`) intersecting the window."""
     freq = rule.get("FREQ")
     if freq not in ("DAILY", "WEEKLY", "MONTHLY", "YEARLY"):
         yield start
         return
-    interval = max(1, int(rule.get("INTERVAL", "1") or 1))
-    count = int(rule["COUNT"]) if rule.get("COUNT") else None
+    interval = _int(rule.get("INTERVAL"), 1, lo=1)
+    count = _int(rule.get("COUNT"), None, lo=0) if rule.get("COUNT") else None
     until = None
     if rule.get("UNTIL"):
         try:
@@ -124,7 +161,7 @@ def expand(start, rule, window_start, window_end, exdates):
         except ValueError:
             until = None
     byday = [x[-2:] for x in rule.get("BYDAY", "").split(",") if x]
-    bymonthday = [int(x) for x in rule.get("BYMONTHDAY", "").split(",") if x]
+    bymonthday = [d for d in (_int(x, 0) for x in rule.get("BYMONTHDAY", "").split(",") if x) if 1 <= d <= 31]
     is_dt = isinstance(start, dt.datetime)
     t = start.time() if is_dt else None
 
@@ -138,7 +175,9 @@ def expand(start, rule, window_start, window_end, exdates):
     produced = 0
     day0 = _first_of(start)
     if freq == "DAILY":
-        n = 0
+        # No COUNT: jump to just before the window instead of walking from the start
+        # (a daily event that began years ago would otherwise hit the cap and vanish).
+        n = max(0, (window_start - day0).days // interval - 1) if count is None else 0
         while True:
             occ = make(day0 + dt.timedelta(days=n * interval))
             n += 1
@@ -154,7 +193,7 @@ def expand(start, rule, window_start, window_end, exdates):
     elif freq == "WEEKLY":
         wanted = [DAYS.index(x) for x in byday if x in DAYS] or [day0.weekday()]
         week0 = day0 - dt.timedelta(days=day0.weekday())
-        n = 0
+        n = max(0, ((window_start - week0).days // 7) // interval - 1) if count is None else 0
         while True:
             base = week0 + dt.timedelta(weeks=n * interval)
             for wd in sorted(wanted):
@@ -176,7 +215,7 @@ def expand(start, rule, window_start, window_end, exdates):
             n += 1
     elif freq == "MONTHLY":
         days = bymonthday or [day0.day]
-        n = 0
+        n = max(0, ((window_start.year * 12 + window_start.month) - (day0.year * 12 + day0.month)) // interval - 1) if count is None else 0
         while True:
             total = day0.year * 12 + day0.month - 1 + n * interval
             y, m = divmod(total, 12)
@@ -202,7 +241,7 @@ def expand(start, rule, window_start, window_end, exdates):
                 return
             n += 1
     else:  # YEARLY
-        n = 0
+        n = max(0, (window_start.year - day0.year) // interval - 1) if count is None else 0
         while True:
             y = day0.year + n * interval
             try:
@@ -341,14 +380,20 @@ def parse_events(text, window_start, window_end):
                     "attendeeCount": len(ev.get("attendees") or [])})
 
     for ev in masters:
-        if ev["rrule"]:
-            for occ in expand(ev["start"], ev["rrule"], window_start, window_end, ev["exdates"]):
-                ov = overrides.get((ev.get("uid"), _first_of(occ)))
-                if ov:
-                    continue
-                emit(ev, occ)
-        else:
-            emit(ev, ev["start"])
+        try:
+            if ev["rrule"]:
+                for occ in expand(ev["start"], ev["rrule"], window_start, window_end, ev["exdates"]):
+                    ov = overrides.get((ev.get("uid"), _first_of(occ)))
+                    if ov:
+                        continue
+                    emit(ev, occ)
+            else:
+                emit(ev, ev["start"])
+        except (ValueError, TypeError, OverflowError, KeyError):
+            continue            # a malformed event is skipped; the rest of the feed is kept
     for ov in overrides.values():
-        emit(ov, ov["start"])
+        try:
+            emit(ov, ov["start"])
+        except (ValueError, TypeError, OverflowError, KeyError):
+            continue
     return out

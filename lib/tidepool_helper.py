@@ -14,7 +14,9 @@ never touch a JSON file.
 """
 import base64
 import datetime as dt
+import fcntl
 import hashlib
+import http.client
 import ipaddress
 import json
 import os
@@ -147,6 +149,15 @@ def settings_get():
 
 
 def settings_set(args):
+    # Two quick toggles can run two helpers at once; take a lock so neither's
+    # change is lost to the other's read-modify-write.
+    os.makedirs(config_dir(), mode=0o700, exist_ok=True)
+    with open(os.path.join(config_dir(), ".lock"), "a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        return _settings_set_locked(args)
+
+
+def _settings_set_locked(args):
     current = settings_get()["values"]
     patch = args.get("values")
     if not isinstance(patch, dict):
@@ -166,7 +177,8 @@ def import_nookisle(args):
     if not isinstance(data, dict):
         raise HelperError("no nookisle settings found", "not-found")
     vals = data.get("values") if isinstance(data.get("values"), dict) else data
-    found = [clean_source(s) for s in (vals.get("calendarSources") or [])]
+    listed = vals.get("calendarSources")
+    found = [clean_source(s) for s in (listed if isinstance(listed, list) else [])]
     found = [s for s in found if s]
     current = settings_get()["values"]
     have = {source_id(s) for s in current["calendarSources"]}
@@ -190,8 +202,16 @@ def _is_private(ip):
             or a.is_unspecified or (a.version == 4 and a in cgnat))
 
 
-def check_url(url, allow_local=False):
-    """Validate a remote calendar URL; return it with webcal:// -> https://."""
+LOOPBACK_HOSTS = ("localhost", "127.0.0.1", "::1")
+
+
+def check_url(url, allow_local=False, loopback_ok=None):
+    """Validate a remote calendar URL; return it with webcal:// -> https://.
+    `loopback_ok`: may this request go to localhost? Defaults to `allow_local`;
+    http_request passes True only when the *first* URL was a loopback one, so a
+    public server cannot redirect us to a service on this machine."""
+    if loopback_ok is None:
+        loopback_ok = allow_local
     if url.startswith("webcal://"):
         url = "https://" + url[len("webcal://"):]
     parts = urllib.parse.urlsplit(url)
@@ -200,10 +220,13 @@ def check_url(url, allow_local=False):
         raise HelperError("credentials in URL", "bad-url")
     if parts.scheme not in ("http", "https") or not host:
         raise HelperError("only https URLs are allowed", "bad-url")
-    if parts.scheme == "http" and host not in ("localhost", "127.0.0.1", "::1"):
+    is_loopback = host in LOOPBACK_HOSTS
+    if parts.scheme == "http" and not (is_loopback and loopback_ok):
         raise HelperError("only https URLs are allowed", "bad-url")
-    if allow_local or host in ("localhost", "127.0.0.1", "::1"):
+    if allow_local or (is_loopback and loopback_ok):
         return url
+    if is_loopback:
+        raise HelperError("private address", "private-address")
     try:
         infos = socket.getaddrinfo(host, parts.port or 443, proto=socket.IPPROTO_TCP)
     except OSError:
@@ -214,20 +237,74 @@ def check_url(url, allow_local=False):
     return url
 
 
+# The connection itself re-checks the address it actually connects to. Checking
+# only the name beforehand would let a DNS server answer "public" for the check
+# and "10.0.0.1" for the connect (DNS rebinding).
+_POLICY = {"allow_local": False, "loopback_ok": False}
+
+
+def _pinned_connection(address, timeout=None, source_address=None):
+    host, port = address
+    last = None
+    blocked = False
+    for family, socktype, proto, _, sockaddr in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM):
+        ip = sockaddr[0]
+        if not _POLICY["allow_local"] and _is_private(ip):
+            if not (_POLICY["loopback_ok"] and ipaddress.ip_address(ip).is_loopback and host in LOOPBACK_HOSTS):
+                blocked = True
+                continue
+        try:
+            return socket.create_connection((ip, port), timeout, source_address)
+        except OSError as e:
+            last = e
+    if blocked and last is None:
+        raise HelperError("private address", "private-address")
+    raise last or OSError("could not connect")
+
+
+class _PinnedHTTP(http.client.HTTPConnection):
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        self._create_connection = _pinned_connection
+
+
+class _PinnedHTTPS(http.client.HTTPSConnection):
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        self._create_connection = _pinned_connection
+
+
+class _HTTPHandler(urllib.request.HTTPHandler):
+    def http_open(self, req):
+        return self.do_open(_PinnedHTTP, req)
+
+
+class _HTTPSHandler(urllib.request.HTTPSHandler):
+    def https_open(self, req):
+        return self.do_open(_PinnedHTTPS, req, context=self._context)
+
+
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
 
 
-_opener = urllib.request.build_opener(_NoRedirect)
+_opener = urllib.request.build_opener(_NoRedirect, _HTTPHandler, _HTTPSHandler)
 
 
 def http_request(method, url, headers=None, body=None, allow_local=False):
     """Return (status, headers, bytes), following up to MAX_REDIRECTS hops that
-    each pass check_url (so a public host cannot bounce us to the LAN)."""
+    each pass check_url (so a public host cannot bounce us to the LAN or to
+    localhost). Credentials are not forwarded to a different host."""
+    headers = dict(headers or {})
+    first_host = (urllib.parse.urlsplit(url.replace("webcal://", "https://", 1)).hostname or "")
+    loopback_ok = allow_local or first_host in LOOPBACK_HOSTS
+    _POLICY["allow_local"] = bool(allow_local)
+    _POLICY["loopback_ok"] = bool(loopback_ok)
+    host = first_host
     for _ in range(MAX_REDIRECTS + 1):
-        url = check_url(url, allow_local)
-        req = urllib.request.Request(url, data=body, method=method, headers=headers or {})
+        url = check_url(url, allow_local, loopback_ok)
+        req = urllib.request.Request(url, data=body, method=method, headers=headers)
         try:
             with _opener.open(req, timeout=HTTP_TIMEOUT) as r:
                 return r.status, dict(r.headers), r.read(MAX_BODY + 1)[:MAX_BODY]
@@ -236,9 +313,13 @@ def http_request(method, url, headers=None, body=None, allow_local=False):
                 if e.code in (301, 302, 303, 307, 308) and e.headers.get("Location"):
                     nxt = urllib.parse.urljoin(url, e.headers["Location"])
                     try:
-                        url = check_url(nxt, allow_local)
+                        url = check_url(nxt, allow_local, loopback_ok)
                     except HelperError:
                         raise HelperError("redirect refused", "redirect-refused")
+                    new_host = urllib.parse.urlsplit(url).hostname or ""
+                    if new_host != host:                      # never send a login to another host
+                        headers = {k: v for k, v in headers.items() if k.lower() != "authorization"}
+                        host = new_host
                     continue
                 return e.code, dict(e.headers or {}), (e.read(MAX_BODY) if e.fp else b"")
             finally:
@@ -607,7 +688,7 @@ def search_zones(args):
 # ── Event notifications ──────────────────────────────────────────────────────
 def send_notification(title, body, urgency="normal"):
     try:
-        subprocess.run(["notify-send", "-a", "Tidepool", "-u", urgency, "-i", "appointment-soon", title, body],
+        subprocess.run(["notify-send", "-a", "Tidepool", "-u", urgency, "-i", "appointment-soon", "--", title, body],
                        capture_output=True, timeout=10)
         return True
     except (OSError, subprocess.TimeoutExpired):
@@ -619,6 +700,8 @@ def notify_due(args):
     once per event (remembered in notified.json, pruned after two days)."""
     path = os.path.join(state_dir(), "notified.json")
     seen = read_json(path, {})
+    if not isinstance(seen, dict):
+        seen = {}
     now = time.time()
     seen = {k: t for k, t in seen.items() if isinstance(t, (int, float)) and now - t < 2 * 86400}
     sent = 0

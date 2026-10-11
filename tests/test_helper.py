@@ -56,7 +56,7 @@ class HelperTest(unittest.TestCase):
         self.assertNotEqual(a, h.source_id({"kind": "caldav", "url": "https://x/y.ics"}))
 
     def test_check_url_rules(self):
-        self.assertEqual(h.check_url("webcal://localhost/a.ics"), "https://localhost/a.ics")
+        self.assertEqual(h.check_url("webcal://localhost/a.ics", loopback_ok=True), "https://localhost/a.ics")
         for bad in ("ftp://x/a", "http://example.com/a.ics", "https://u:p@example.com/a", "file:///etc/passwd"):
             with self.assertRaises(h.HelperError) as c:
                 h.check_url(bad)
@@ -240,6 +240,122 @@ class HelperTest(unittest.TestCase):
             self.assertFalse(any(c[0] == "busctl" for c in calls))
         finally:
             h._run = orig
+
+    def test_loopback_only_when_the_request_started_there(self):
+        # a public server must not be able to redirect us to a service on this machine
+        for url in ("https://localhost/x", "http://127.0.0.1:8080/x", "http://[::1]/x"):
+            with self.assertRaises(h.HelperError, msg=url) as c:
+                h.check_url(url)
+            self.assertIn(c.exception.code, ("private-address", "bad-url"))
+        self.assertEqual(h.check_url("http://127.0.0.1:8080/x", loopback_ok=True), "http://127.0.0.1:8080/x")
+        self.assertEqual(h.check_url("https://10.1.2.3/x", allow_local=True), "https://10.1.2.3/x")
+        with self.assertRaises(h.HelperError):                       # plain http stays loopback-only
+            h.check_url("http://10.1.2.3/x", allow_local=True)
+
+    def test_connection_refuses_a_private_address_even_if_the_name_looked_public(self):
+        # DNS rebinding: the name passed the check, but now resolves to the LAN
+        real = h.socket.getaddrinfo
+        h.socket.getaddrinfo = lambda host, port, **k: [(h.socket.AF_INET, h.socket.SOCK_STREAM, 6, "", ("10.0.0.5", port))]
+        try:
+            h._POLICY.update(allow_local=False, loopback_ok=False)
+            with self.assertRaises(h.HelperError) as c:
+                h._pinned_connection(("calendar.example.com", 443), 2)
+            self.assertEqual(c.exception.code, "private-address")
+        finally:
+            h.socket.getaddrinfo = real
+
+    def test_login_is_not_forwarded_to_another_host(self):
+        seen = {}
+
+        class Target(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *a): pass
+            def do_GET(self):
+                seen["auth"] = self.headers.get("Authorization")
+                self.send_response(200); self.end_headers(); self.wfile.write(b"BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n")
+
+        target = http.server.HTTPServer(("127.0.0.1", 0), Target)
+        port = target.server_port
+
+        class Bounce(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *a): pass
+            def do_GET(self):
+                self.send_response(302)
+                self.send_header("Location", "http://localhost:%d/cal.ics" % port)   # same machine, different host name
+                self.end_headers()
+
+        bounce = http.server.HTTPServer(("127.0.0.1", 0), Bounce)
+        for srv in (target, bounce):
+            threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            status, _, body = h.http_request("GET", "http://127.0.0.1:%d/start" % bounce.server_port,
+                                             {"Authorization": "Basic c2VjcmV0"})
+        finally:
+            for srv in (target, bounce):
+                srv.shutdown(); srv.server_close()
+        self.assertEqual(status, 200)
+        self.assertIsNone(seen["auth"])
+
+    def test_notification_title_cannot_become_an_option(self):
+        got = []
+        class R: returncode = 0
+        orig = h.subprocess.run
+        h.subprocess.run = lambda cmd, **k: (got.append(cmd) or R())
+        try:
+            h.send_notification("-u critical --help", "body")
+        finally:
+            h.subprocess.run = orig
+        cmd = got[0]
+        self.assertIn("--", cmd)
+        self.assertLess(cmd.index("--"), cmd.index("-u critical --help"))
+
+    def test_concurrent_setting_changes_are_not_lost(self):
+        import subprocess
+        procs = []
+        env = dict(os.environ, TIDEPOOL_CONFIG_DIR=os.environ["TIDEPOOL_CONFIG_DIR"], TIDEPOOL_STATE_DIR=os.environ["TIDEPOOL_STATE_DIR"])
+        script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bin", "tidepool-helper")
+        patches = [{"hideAllDayEvents": True}, {"showFullEventTitles": True}, {"agendaDays": 7}, {"autoScrollToNextEvent": False}]
+        for patch in patches:
+            p = subprocess.Popen([sys.executable, "-I", "-B", script, "settings-set"], stdin=subprocess.PIPE,
+                                 stdout=subprocess.PIPE, env=env)
+            p.stdin.write(json.dumps({"values": patch}).encode()); p.stdin.close()
+            procs.append(p)
+        for p in procs:
+            p.wait(timeout=20)
+        v = h.settings_get()["values"]
+        self.assertTrue(v["hideAllDayEvents"] and v["showFullEventTitles"] and v["agendaDays"] == 7 and v["autoScrollToNextEvent"] is False)
+
+    def _rrule_count(self, rrule, years_ago, days=30):
+        start = (self.today - dt.timedelta(days=365 * years_ago)).strftime("%Y%m%d")
+        text = ("BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:r\r\nSUMMARY:R\r\nDTSTART;VALUE=DATE:%s\r\nRRULE:%s\r\n"
+                "END:VEVENT\r\nEND:VCALENDAR\r\n") % (start, rrule)
+        return len(h.ics.parse_events(text, self.today, self.today + dt.timedelta(days=days)))
+
+    def test_old_recurring_events_still_show(self):
+        # these used to hit the occurrence cap while walking from the start and vanish
+        self.assertEqual(self._rrule_count("FREQ=DAILY", 7), 31)
+        self.assertEqual(self._rrule_count("FREQ=DAILY;INTERVAL=3", 9), 11)
+        self.assertIn(self._rrule_count("FREQ=WEEKLY", 15), (4, 5))
+        self.assertEqual(self._rrule_count("FREQ=MONTHLY", 20), 1)
+        self.assertEqual(self._rrule_count("FREQ=YEARLY", 30), 1)
+
+    def test_count_still_ends_a_recurrence(self):
+        self.assertEqual(self._rrule_count("FREQ=DAILY;COUNT=5", 2), 0)
+        self.assertEqual(self._rrule_count("FREQ=DAILY;COUNT=5", 0), 5)
+
+    def test_a_malformed_event_does_not_sink_the_feed(self):
+        d = self.today.strftime("%Y%m%d")
+        text = ("BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:a\r\nSUMMARY:Odd\r\nDTSTART;VALUE=DATE:%s\r\nRRULE:FREQ=MONTHLY;BYMONTHDAY=x;INTERVAL=y\r\nEND:VEVENT\r\n"
+                "BEGIN:VEVENT\r\nUID:b\r\nSUMMARY:Fine\r\nDTSTART;VALUE=DATE:%s\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n") % (d, d)
+        self.assertIn("Fine", [e["title"] for e in h.ics.parse_events(text, self.today, self.today)])
+
+    def test_windows_time_zone_names_are_understood(self):
+        d = self.today.strftime("%Y%m%d")
+        mk = lambda tz: ("BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:w\r\nSUMMARY:W\r\nDTSTART;TZID=%s:%sT130000\r\nDTEND;TZID=%s:%sT140000\r\n"
+                         "END:VEVENT\r\nEND:VCALENDAR\r\n") % (tz, d, tz, d)
+        win = h.ics.parse_events(mk("Eastern Standard Time"), self.today, self.today)[0]["start"]
+        iana = h.ics.parse_events(mk("America/New_York"), self.today, self.today)[0]["start"]
+        self.assertEqual(win, iana)                       # same instant, whatever zone the test runs in
+        self.assertEqual(win.utcoffset() if win.tzinfo else None, None)   # still a naive local time
 
     def test_zones(self):
         z = h.zones({"zones": ["UTC", "Asia/Tokyo", "Not/AZone"]})["zones"]

@@ -263,6 +263,7 @@ BarWidget {
       Repeater {
         model: Qt.formatDateTime(store.now, "HH\nmm").split("\n")
         Text {
+          textFormat: Text.PlainText
           required property string modelData
           anchors.horizontalCenter: parent.horizontalCenter
           text: modelData
@@ -296,6 +297,7 @@ BarWidget {
 
       // The base: date and/or time.
       Text {
+        textFormat: Text.PlainText
         anchors.verticalCenter: parent.verticalCenter
         text: root.baseText
         color: root.fg
@@ -380,6 +382,7 @@ BarWidget {
                 }
 
                 Text {
+                  textFormat: Text.PlainText
                   id: label
                   anchors.verticalCenter: parent.verticalCenter
                   text: root.extraText(entry.modelData)

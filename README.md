@@ -88,7 +88,7 @@ Add calendars in **Settings → Calendars**. Source types:
 
 Safety rules: `https` only (or `http://localhost`); no credentials inside URLs; private and local
 addresses (including Tailscale's `100.64.0.0/10`) are blocked unless you tick *Allow local network*
-on that source; redirects are re-checked against the same rules.
+on that source; redirects are re-checked against the same rules, the address actually connected to is checked too (so a DNS trick cannot reach your LAN), and a login is never sent to a different host after a redirect.
 
 Event details (description, organizer, attendees) and the call link come straight from the feed; nothing is sent anywhere. Links are only opened when you click them, and only `http(s)` and `mailto:` are ever handed to the desktop.
 
@@ -145,7 +145,7 @@ omarchy-shell jgarza.tidepool timer <minutes> <label>
 ## Privacy and network
 
 Tidepool talks to the network only for what you set up: your calendar URLs, and
-[Open-Meteo](https://open-meteo.com) (no key) for weather and for the city and time zone search.
+[Open-Meteo](https://open-meteo.com) (no key) for weather and the city search. The time zone search is local.
 Nothing else leaves your machine. Timers, media and clocks are local.
 
 ## Development

@@ -82,12 +82,20 @@ Item {
     return s.colorName ? themeColor(s.colorName) : (s.color ? s.color : Color.accent)
   }
 
+  property var notifiedKeys: ({})
+
   // Desktop notifications a few minutes before an event. The helper remembers
   // what it already sent, so a restart does not repeat them.
   function checkNotifications() {
     if (!loaded || cfg.notifyMinutes <= 0) return
-    var due = Model.dueNotifications(items, new Date(), cfg.notifyMinutes, calendar)
-    if (due.length > 0) helper("notify-due", { items: due }, function () {}, 20)
+    var due = Model.dueNotifications(items, new Date(), cfg.notifyMinutes, calendar).filter(function (d) { return !notifiedKeys[d.key] })
+    if (due.length === 0) return
+    // Remember what was handed over, so the helper is not started again every
+    // minute for an event that is already being announced.
+    var next = Object.assign({}, notifiedKeys)
+    for (var i = 0; i < due.length; ++i) next[due[i].key] = Date.now()
+    notifiedKeys = next
+    helper("notify-due", { items: due }, function () {}, 20)
   }
 
   readonly property var upcomingList: Model.upcoming(items, now, 3, calendar)
