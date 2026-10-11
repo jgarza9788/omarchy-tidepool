@@ -1,0 +1,155 @@
+# Tidepool
+
+A calm clock for the [Omarchy](https://omarchy.org) bar that carries the next thing on your
+calendar, and opens into an agenda, timers, a music player, weather and world clocks.
+
+It lives *in* the bar, replacing the clock, and draws everything with the bar's own colors and your
+theme accent, so it blends in rather than sitting on top. The panel is a tab that grows out of the
+bar edge, with the concave "rounded tab" corners of
+[css-tip.com/rounded-tab](https://css-tip.com/rounded-tab/).
+
+Tidepool started as a bar-resident, theme-colored take on the
+[Nookisle](https://github.com/bavanchun/nookisle) island, and keeps its calendar-source model.
+
+## What you get
+
+**On the bar:** `[date and/or time] │ extras`
+
+- The base is the time, the date, or both. Right-click the bar to cycle them.
+- After a divider come up to four **extras**, each with its own switch: the next calendar event
+  (`Standup · 12m`), a running timer, the playing track and the weather.
+- Show 0–4 extras at once. If more are switched on than fit, they swap page by page with dots for
+  the rest. Draw them plain, in a border, or as buttons.
+- Click an extra to open the panel on its own tab.
+- A hairline under the widget fills as the day passes, with a tick for every event.
+- Hover for a peek at the next three events.
+
+**In the panel:**
+
+| Tab | |
+| --- | --- |
+| **Agenda** | Month grid and the day's events, or the next 3 / 7 / 14 / 30 days grouped by day. |
+| **Timers** | Presets, custom minutes and a pomodoro. They are real Omarchy reminders. |
+| **Player** | Any MPRIS player: art, seek bar, shuffle, repeat, volume, a player switcher and a live audio spectrum. |
+| **Weather** | Current conditions and a 5-day forecast. |
+| **Clocks** | World clocks. |
+
+A separate **Settings** window (the button after the tabs) holds every option.
+
+## Requirements
+
+- Omarchy with the shell (`omarchy-shell`) and its plugin system.
+- `python3` (standard library only).
+- Optional: `cava` for the player's spectrum, `secret-tool` (libsecret) to store CalDAV
+  passwords, `omarchy-reminder` for timers (ships with Omarchy).
+
+## Install
+
+```sh
+omarchy plugin add https://github.com/jgarza9788/omarchy-tidepool --enable
+```
+
+Then put it in the bar, in place of the clock. In `~/.config/omarchy/shell.json`, under
+`bar.layout.center`, swap `{ "id": "omarchy.clock" }` for:
+
+```json
+{ "id": "jgarza.tidepool" }
+```
+
+and, to pin it to the middle of the bar, set `"centerAnchor": "jgarza.tidepool"` in `bar`.
+The stock clock stays installed, so switching back is a one-line change.
+
+Or clone by hand into `~/.config/omarchy/plugins/jgarza.tidepool`, run
+`omarchy-shell shell rescanPlugins` and `omarchy plugin enable jgarza.tidepool`.
+
+## Calendars
+
+Add calendars in **Settings → Calendars**. Source types:
+
+- **ICS file** and **calendar folder** (a directory of `.ics` files): a path.
+- **iCal link**: any `https` feed. For Google Calendar use *Settings → your calendar →
+  Secret address in iCal format*. There is no Google login.
+- **CalDAV**: URL, user name and an app password. The password goes to the system keyring
+  (`secret-tool`, service `tidepool`) and is never written to a file.
+
+Safety rules: `https` only (or `http://localhost`); no credentials inside URLs; private and local
+addresses (including Tailscale's `100.64.0.0/10`) are blocked unless you tick *Allow local network*
+on that source; redirects are re-checked against the same rules.
+
+Sources and agenda options are stored in `~/.config/jgarza.tidepool/settings.json` (mode 0600).
+*Import from Nookisle* copies sources from `~/.config/nookisle/settings.json`.
+
+## Options
+
+Everything has a switch in the Settings window. They are also plain keys on the widget's entry in
+`shell.json`:
+
+| Key | Default | |
+| --- | --- | --- |
+| `clockMode` | `time` | `time`, `date` or `both` |
+| `format`, `dateFormat` | `HH:mm`, `ddd d MMM` | Qt date formats |
+| `showEvent` `showTimer` `showMusic` `showWeather` | `true` `true` `false` `false` | which extras appear |
+| `extrasShown` | `4` | how many extras at once (0 hides them and the divider) |
+| `extraStyle` | `plain` | `plain`, `border` or `button` |
+| `rotateSeconds` | `6` | seconds per page when extras swap |
+| `soonMinutes` | `15` | events this close are drawn in the accent color |
+| `chipHorizonHours`, `chipMaxChars` | `12`, `22` | when the event chip appears, and how long its title may be |
+| `peekOnHover`, `tideLine` | `true` | hover peek, day-progress line |
+| `weekStart` | `monday` | month grid |
+| `weatherCity`, `weatherLat`, `weatherLon`, `units` | | picked in Settings → Weather; `metric` or `imperial` |
+| `worldClocks` | | comma-separated IANA zones, up to 6 |
+| `timerPresets` | `5,15,25,45` | minutes |
+
+## Controls
+
+| | |
+| --- | --- |
+| Left click | open the panel (or the extra's own tab if you click an extra) |
+| Right click | cycle date / time / both |
+| Middle click | open the timezone picker |
+| `Tab` / `Shift+Tab`, `1`–`5` | switch tabs |
+| `←` `→` · `[` `]` · `t` · `r` · `Esc` | agenda: day, month, today, sync; close |
+| Player: `space` `n` `p` `s` `r` `+` `-` | play/pause, next, previous, shuffle, repeat, volume |
+
+Shell commands:
+
+```sh
+omarchy-shell jgarza.tidepool open|close|toggle|sync|cycleMode
+omarchy-shell jgarza.tidepool tab agenda|timers|player|weather|clocks
+omarchy-shell jgarza.tidepool settings [section]
+omarchy-shell jgarza.tidepool timer <minutes> <label>
+```
+
+## Privacy and network
+
+Tidepool talks to the network only for what you set up: your calendar URLs, and
+[Open-Meteo](https://open-meteo.com) (no key) for weather and for the city and time zone search.
+Nothing else leaves your machine. Timers, music and clocks are local.
+
+## Development
+
+```text
+BarWidget.qml  Store.qml  Panel.qml  TabPanel.qml  SettingsWindow.qml   the shell side
+components/                                                              tabs, tab shapes, pickers
+Model.js                                                                 pure logic (no QML)
+lib/tidepool_helper.py  lib/ics.py                                       sync, weather, keyring
+bin/tidepool-helper  bin/cava.conf                                       entry point, spectrum config
+```
+
+```sh
+node tests/model.test.js                                # model
+python3 -I -B -m unittest discover tests                # helper
+```
+
+Quickshell caches compiled QML. If an edit seems to be ignored, run
+`rm -rf ~/.cache/quickshell/qmlcache/*` and `omarchy restart shell`.
+
+## Credits
+
+[Nookisle](https://github.com/bavanchun/nookisle) for the calendar model and the idea,
+[css-tip.com](https://css-tip.com/rounded-tab/) for the tab shape, Open-Meteo for weather data,
+and the ICS reader borrowed from the earlier `jgarza.agenda`.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

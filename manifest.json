@@ -1,0 +1,255 @@
+{
+  "schemaVersion": 1,
+  "id": "jgarza.tidepool",
+  "name": "Tidepool",
+  "version": "0.1.0",
+  "author": "jgarza",
+  "license": "MIT",
+  "description": "A calm clock for the bar that grows into an agenda, timers, now-playing, weather and world clocks. Bar-resident, theme-colored successor to the Nookisle island. Calendars: ICS files, calendar folders, iCal links (Google secret address) and CalDAV.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Tidepool",
+    "description": "Clock with next-event chip, hover peek and an agenda/timers/player/weather panel.",
+    "category": "Time",
+    "allowMultiple": false,
+    "defaultSection": "center",
+    "defaults": {
+      "clockMode": "time",
+      "showEvent": true,
+      "showTimer": true,
+      "showMusic": false,
+      "showWeather": false,
+      "format": "HH:mm",
+      "dateFormat": "ddd d MMM",
+      "peekOnHover": true,
+      "tideLine": true,
+      "rotateSeconds": 6,
+      "soonMinutes": 15,
+      "chipMaxChars": 22,
+      "chipHorizonHours": 12,
+      "weekStart": "monday",
+      "weatherCity": "",
+      "units": "metric",
+      "worldClocks": "",
+      "timerPresets": "5,15,25,45",
+      "extrasShown": 4,
+      "extraStyle": "plain"
+    },
+    "schema": [
+      {
+        "key": "clockMode",
+        "type": "enum",
+        "label": "Date / time",
+        "description": "The base of the widget.",
+        "defaultValue": "time",
+        "options": [
+          {
+            "value": "time",
+            "label": "Time",
+            "description": "07:40"
+          },
+          {
+            "value": "date",
+            "label": "Date",
+            "description": "Sun 11 Oct"
+          },
+          {
+            "value": "both",
+            "label": "Date + time",
+            "description": "Sun 11 Oct  07:40"
+          }
+        ]
+      },
+      {
+        "key": "showEvent",
+        "type": "boolean",
+        "label": "Next event",
+        "description": "Show a chip for the next calendar event after the divider.",
+        "defaultValue": true
+      },
+      {
+        "key": "showTimer",
+        "type": "boolean",
+        "label": "Timer",
+        "description": "Show the soonest running timer after the divider.",
+        "defaultValue": true
+      },
+      {
+        "key": "showMusic",
+        "type": "boolean",
+        "label": "Music",
+        "description": "Show the playing track after the divider.",
+        "defaultValue": false
+      },
+      {
+        "key": "showWeather",
+        "type": "boolean",
+        "label": "Weather",
+        "description": "Show the temperature after the divider (needs a city).",
+        "defaultValue": false
+      },
+      {
+        "key": "extrasShown",
+        "type": "integer",
+        "label": "Extras shown at once",
+        "description": "0 hides extras (and the divider). Fewer than you have switched on swap in turn, with dots for the rest.",
+        "defaultValue": 4,
+        "min": 0,
+        "max": 4,
+        "step": 1
+      },
+      {
+        "key": "extraStyle",
+        "type": "enum",
+        "label": "Extras style",
+        "description": "How each extra is drawn on the bar.",
+        "defaultValue": "plain",
+        "options": [
+          {
+            "value": "plain",
+            "label": "Plain",
+            "description": "Text after a divider."
+          },
+          {
+            "value": "border",
+            "label": "Border",
+            "description": "Each extra in an outlined box."
+          },
+          {
+            "value": "button",
+            "label": "Button",
+            "description": "Each extra on a filled, button-like box."
+          }
+        ]
+      },
+      {
+        "key": "format",
+        "type": "string",
+        "label": "Time format",
+        "description": "Qt date format, e.g. HH:mm or h:mm AP.",
+        "defaultValue": "HH:mm"
+      },
+      {
+        "key": "dateFormat",
+        "type": "string",
+        "label": "Date format",
+        "description": "Used by the date and the hover peek.",
+        "defaultValue": "ddd d MMM"
+      },
+      {
+        "key": "peekOnHover",
+        "type": "boolean",
+        "label": "Hover peek",
+        "description": "Show the next three events when hovering.",
+        "defaultValue": true
+      },
+      {
+        "key": "tideLine",
+        "type": "boolean",
+        "label": "Day-progress line",
+        "description": "A thin line under the widget that fills as the day passes.",
+        "defaultValue": true
+      },
+      {
+        "key": "rotateSeconds",
+        "type": "integer",
+        "label": "Swap every (s)",
+        "description": "Seconds per page when extras swap.",
+        "defaultValue": 6,
+        "min": 2,
+        "max": 60,
+        "step": 1
+      },
+      {
+        "key": "soonMinutes",
+        "type": "integer",
+        "label": "'Soon' threshold (min)",
+        "description": "Events this close are highlighted in the accent color.",
+        "defaultValue": 15,
+        "min": 1,
+        "max": 180,
+        "step": 1
+      },
+      {
+        "key": "chipMaxChars",
+        "type": "integer",
+        "label": "Chip title length",
+        "description": "Longer event titles are shortened.",
+        "defaultValue": 22,
+        "min": 8,
+        "max": 60,
+        "step": 1
+      },
+      {
+        "key": "chipHorizonHours",
+        "type": "integer",
+        "label": "Chip horizon (h)",
+        "description": "Only show the next-event chip when it starts within this many hours.",
+        "defaultValue": 12,
+        "min": 1,
+        "max": 72,
+        "step": 1
+      },
+      {
+        "key": "weekStart",
+        "type": "enum",
+        "label": "Week starts on",
+        "description": "For the month grid.",
+        "defaultValue": "monday",
+        "options": [
+          {
+            "value": "monday",
+            "label": "Monday"
+          },
+          {
+            "value": "sunday",
+            "label": "Sunday"
+          }
+        ]
+      },
+      {
+        "key": "weatherCity",
+        "type": "string",
+        "label": "Weather city",
+        "description": "Looked up with Open-Meteo. Leave empty to hide weather.",
+        "defaultValue": ""
+      },
+      {
+        "key": "units",
+        "type": "enum",
+        "label": "Units",
+        "description": "Weather units.",
+        "defaultValue": "metric",
+        "options": [
+          {
+            "value": "metric",
+            "label": "Metric (°C, km/h)"
+          },
+          {
+            "value": "imperial",
+            "label": "Imperial (°F, mph)"
+          }
+        ]
+      },
+      {
+        "key": "worldClocks",
+        "type": "string",
+        "label": "World clocks",
+        "description": "Comma-separated time zones, e.g. Asia/Tokyo, Europe/London.",
+        "defaultValue": ""
+      },
+      {
+        "key": "timerPresets",
+        "type": "string",
+        "label": "Timer presets (min)",
+        "description": "Comma-separated minutes, e.g. 5,15,25,45.",
+        "defaultValue": "5,15,25,45"
+      }
+    ]
+  }
+}
