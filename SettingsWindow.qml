@@ -226,6 +226,11 @@ FloatingWindow {
           }
           PText { text: "Next event chip"; font.bold: true; tone: Color.accent; topPadding: Style.space(16); bottomPadding: Style.space(2); elide: Text.ElideNone }
           SettingRow {
+            label: "Notify before events"
+            description: "A desktop notification this many minutes before an event starts, with the room and call link. 0 turns it off."
+            Stepper { value: win.cfg.notifyMinutes; from: 0; to: 60; step: 5; suffix: " min"; onChanged: function (v) { win.set({ notifyMinutes: v }) } }
+          }
+          SettingRow {
             label: "\u201cSoon\u201d threshold"
             description: "Events this close are highlighted in the accent colour."
             Stepper { value: win.cfg.soonMinutes; from: 1; to: 180; step: 5; suffix: " min"; onChanged: function (v) { win.set({ soonMinutes: v }) } }

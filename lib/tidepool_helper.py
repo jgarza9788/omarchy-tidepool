@@ -21,6 +21,7 @@ import os
 import socket
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -303,6 +304,9 @@ def make_items(src, calendar, raw_events):
             "title": e["title"], "location": e.get("location", ""),
             "allDay": bool(e["allDay"]), "start": iso(e["start"]), "end": iso(e["end"]),
             "color": src.get("color", ""),
+            "description": e.get("description", ""), "meetingUrl": e.get("meetingUrl", ""),
+            "organizer": e.get("organizer", ""), "attendees": e.get("attendees", []),
+            "attendeeCount": e.get("attendeeCount", 0),
         })
     return out
 
@@ -599,6 +603,48 @@ def search_zones(args):
     return {"zones": out}
 
 
+# ── Event notifications ──────────────────────────────────────────────────────
+def send_notification(title, body, urgency="normal"):
+    try:
+        subprocess.run(["notify-send", "-a", "Tidepool", "-u", urgency, "-i", "appointment-soon", title, body],
+                       capture_output=True, timeout=10)
+        return True
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def notify_due(args):
+    """Send a desktop notification for each event starting within `minutes`,
+    once per event (remembered in notified.json, pruned after two days)."""
+    path = os.path.join(state_dir(), "notified.json")
+    seen = read_json(path, {})
+    now = time.time()
+    seen = {k: t for k, t in seen.items() if isinstance(t, (int, float)) and now - t < 2 * 86400}
+    sent = 0
+    for it in (args.get("items") or [])[:20]:
+        key = str(it.get("key", ""))
+        if not key or key in seen:
+            continue
+        try:
+            start = dt.datetime.fromisoformat(str(it.get("start")))
+        except ValueError:
+            continue
+        mins = int((start - dt.datetime.now()).total_seconds() // 60) + 1
+        if mins < 0 or mins > 120:
+            continue
+        title = str(it.get("title") or "Event")[:120]
+        bits = ["Starting now" if mins <= 0 else "Starts in %d min" % mins]
+        if it.get("location"):
+            bits.append(str(it["location"])[:100])
+        if it.get("url"):
+            bits.append("Join: " + str(it["url"])[:200])
+        if send_notification(title, "\n".join(bits)):
+            seen[key] = now
+            sent += 1
+    write_json(path, seen)
+    return {"sent": sent}
+
+
 # ── CLI ──────────────────────────────────────────────────────────────────────
 def _out(obj):
     sys.stdout.write(json.dumps(obj) + "\n")
@@ -636,6 +682,8 @@ def main(argv):
             _out(search_city(args))
         elif cmd == "weather":
             _out(weather(args))
+        elif cmd == "notify-due":
+            _out(notify_due(args))
         elif cmd == "search-zones":
             _out(search_zones(args))
         elif cmd == "zones":

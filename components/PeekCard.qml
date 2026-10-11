@@ -43,6 +43,7 @@ Column {
       item: modelData.item
       store: card.store
       when: Model.whenLabel(modelData, card.store.now)
+      expandable: false
     }
   }
 

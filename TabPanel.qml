@@ -300,6 +300,9 @@ PanelWindow {
       if (button !== Qt.LeftButton && button !== Qt.RightButton && button !== Qt.MiddleButton) return false
       var target = pressTargetAt(px, py)
       if (!target) return false
+      // While we cover the bar, a click arrives without a position. Tell the
+      // owner where it landed so it can tell which of its parts was clicked.
+      if (root.owner && typeof root.owner.noteBarClick === "function") root.owner.noteBarClick(barPoint(px, py).x)
       target.triggerPress(button)
       return true
     }

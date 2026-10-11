@@ -9,7 +9,7 @@ var GLYPH = {
   left: 0xF0141, right: 0xF0142, close: 0xF0156, plus: 0xF0415, trash: 0xF01B4, refresh: 0xF0450, cog: 0xF0493,
   globe: 0xF01E7, check: 0xF012C, alert: 0xF0026, thermo: 0xF050F, wind: 0xF059D, pin: 0xF0403,
   clock: 0xF0150, palette: 0xF03D8,
-  shuffle: 0xF049D, repeat: 0xF0456, "repeat-once": 0xF0458, volume: 0xF057E, "volume-off": 0xF0581,
+  video: 0xF0567, open: 0xF03CC, mail: 0xF01EE, account: 0xF0004, shuffle: 0xF049D, repeat: 0xF0456, "repeat-once": 0xF0458, volume: 0xF057E, "volume-off": 0xF0581,
   sun: 0xF0599, moon: 0xF0594, "partly-day": 0xF0595, "partly-night": 0xF0F31, cloud: 0xF0590, fog: 0xF0591,
   drizzle: 0xF0597, rain: 0xF0596, snow: 0xF0598, storm: 0xF0593
 }
@@ -21,7 +21,7 @@ var CLOCK_MODES = ["time", "date", "both"]
 var DEFAULTS = {
   clockMode: "time", showEvent: true, showTimer: true, showMusic: false, showWeather: false, extrasShown: 4, extraStyle: "plain",
   format: "HH:mm", dateFormat: "ddd d MMM", peekOnHover: true,
-  rotateSeconds: 6, soonMinutes: 15, chipMaxChars: 22, chipHorizonHours: 12, tideLine: true, weatherCity: "", weatherLat: null, weatherLon: null, units: "metric",
+  rotateSeconds: 6, soonMinutes: 15, notifyMinutes: 5, chipMaxChars: 22, chipHorizonHours: 12, tideLine: true, weatherCity: "", weatherLat: null, weatherLon: null, units: "metric",
   worldClocks: "", timerPresets: "5,15,25,45", weekStart: "monday"
 }
 
@@ -58,6 +58,7 @@ function resolveSettings(raw) {
   if (EXTRA_STYLES.indexOf(out.extraStyle) < 0) out.extraStyle = DEFAULTS.extraStyle
   out.extrasShown = clamp(out.extrasShown, 0, 4, DEFAULTS.extrasShown)
   out.rotateSeconds = clamp(out.rotateSeconds, 2, 60, DEFAULTS.rotateSeconds)
+  out.notifyMinutes = clamp(out.notifyMinutes, 0, 60, DEFAULTS.notifyMinutes)
   out.soonMinutes = clamp(out.soonMinutes, 1, 180, DEFAULTS.soonMinutes)
   out.chipMaxChars = clamp(out.chipMaxChars, 8, 60, DEFAULTS.chipMaxChars)
   out.chipHorizonHours = clamp(out.chipHorizonHours, 1, 72, DEFAULTS.chipHorizonHours)
@@ -186,6 +187,39 @@ function agendaGroups(items, start, days, options) {
 
 function agendaTitle(days) {
   return days <= 1 ? "" : days === 3 ? "Next 3 days" : "Next " + days + " days"
+}
+
+// Timed events starting within `minutes` (not already started): the batch
+// the helper turns into desktop notifications. { key, title, start, location, url }
+function dueNotifications(items, now, minutes, options) {
+  if (!(minutes > 0)) return []
+  var out = [], horizon = new Date(now.getTime() + minutes * 60000)
+  var rows = itemsForDay(items, now, options).concat(itemsForDay(items, addDays(now, 1), options))
+  var seen = {}
+  for (var i = 0; i < rows.length; ++i) {
+    var r = rows[i], sp = span(r)
+    if (!sp || r.allDay || sp.from <= now || sp.from > horizon) continue
+    var key = r.sourceId + "|" + (r.uid || "") + "|" + r.start
+    if (seen[key]) continue
+    seen[key] = true
+    out.push({ key: key, title: r.title, start: r.start, location: r.location || "", url: r.meetingUrl || "" })
+  }
+  return out
+}
+
+// Only web and mail links are ever handed to the desktop opener.
+function safeUrl(u) {
+  var url = String(u || "").trim()
+  if (/[\u0000-\u001f\s]/.test(url) || url.length > 2000) return ""
+  return /^(https?:\/\/[^\/@]+(\/|$)|mailto:[^\s@]+@[^\s@]+$|mailto:$)/i.test(url) ? url : ""
+}
+
+// "Ana, Bo +3" from an event's attendee list.
+function attendeeSummary(item) {
+  var list = item.attendees || [], total = item.attendeeCount || list.length
+  if (total === 0) return ""
+  var shown = list.slice(0, 3).join(", ")
+  return total > 3 ? shown + " +" + (total - 3) : shown
 }
 
 // Index of the row happening now, else the first still ahead; all-day rows
@@ -365,6 +399,27 @@ function validateSource(src) {
   return { ok: true, error: "" }
 }
 
+// Where to open this source's calendar in a browser: { name, url } or null
+// (local files have no web page). Never includes secrets: a Google feed's
+// private key stays out of the link; only the account's address is used.
+function webCalendar(src) {
+  if (!src || (src.kind !== "ics-url" && src.kind !== "caldav")) return null
+  var url = String(src.url || ""), host = hostOf(url)
+  if (!host) return null
+  if (host === "calendar.google.com" || host === "www.google.com" || host.slice(-18) === "googleusercontent.com" || host === "apidata.googleusercontent.com") {
+    var m = /\/(?:ical|dav|calendars)\/([^\/]+)/.exec(url), who = ""
+    try { who = m ? decodeURIComponent(m[1]) : "" } catch (e) { who = "" }
+    if (who.indexOf("@") < 0 || who.indexOf("group.calendar.google.com") > 0 || /\s/.test(who)) who = ""
+    return { name: "Google Calendar", url: "https://calendar.google.com/calendar/u/0/r" + (who ? "?authuser=" + encodeURIComponent(who) : "") }
+  }
+  if (/(^|\.)(outlook\.office365\.com|outlook\.live\.com|outlook\.office\.com)$/.test(host)) return { name: "Outlook", url: "https://outlook.office.com/calendar" }
+  if (/(^|\.)icloud\.com$/.test(host)) return { name: "iCloud", url: "https://www.icloud.com/calendar/" }
+  if (/(^|\.)fastmail\.com$/.test(host)) return { name: "Fastmail", url: "https://app.fastmail.com/calendar/" }
+  if (/\/remote\.php\/dav\//.test(url)) return { name: "Nextcloud", url: "https://" + host + "/apps/calendar" }
+  if (src.allowLocalNetwork) return null
+  return { name: host, url: "https://" + host + "/" }
+}
+
 function sourceTitle(src) {
   if (src.label) return src.label
   if (src.kind === "file" || src.kind === "vdir") return String(src.path || "").split("/").filter(Boolean).pop() || src.path
@@ -487,9 +542,9 @@ if (typeof module !== "undefined" && module.exports) {
     loopNext: loopNext, parseBars: parseBars, glyph: glyph, GLYPH: GLYPH, DEFAULTS: DEFAULTS, CLOCK_MODES: CLOCK_MODES, EXTRA_STYLES: EXTRA_STYLES, parseColors: parseColors, resolveSettings: resolveSettings, parsePresets: parsePresets, parseZones: parseZones,
     startOfDay: startOfDay, addDays: addDays, sameDay: sameDay, clock: clock, dayKey: dayKey, span: span, onDay: onDay,
     itemsForDay: itemsForDay, agendaGroups: agendaGroups, agendaTitle: agendaTitle, scrollTarget: scrollTarget, upcoming: upcoming, minutesLabel: minutesLabel, ellipsize: ellipsize,
-    chip: chip, whenLabel: whenLabel, timeLabel: timeLabel, extrasFor: extrasFor, extraPageCount: extraPageCount, extraPage: extraPage, clockParts: clockParts, monthGrid: monthGrid, weekdayHeaders: weekdayHeaders, dotsForDay: dotsForDay,
+    chip: chip, whenLabel: whenLabel, timeLabel: timeLabel, extrasFor: extrasFor, extraPageCount: extraPageCount, extraPage: extraPage, clockParts: clockParts, monthGrid: monthGrid, weekdayHeaders: weekdayHeaders, dotsForDay: dotsForDay, dueNotifications: dueNotifications, safeUrl: safeUrl, attendeeSummary: attendeeSummary,
     KINDS: KINDS, KIND_LABELS: KIND_LABELS, MAX_SOURCES: MAX_SOURCES, hostOf: hostOf, validateSource: validateSource,
-    SOURCE_COLOR_NAMES: SOURCE_COLOR_NAMES, sourceTitle: sourceTitle, sourceDetail: sourceDetail, errorText: errorText, nextColorName: nextColorName,
+    SOURCE_COLOR_NAMES: SOURCE_COLOR_NAMES, webCalendar: webCalendar, sourceTitle: sourceTitle, sourceDetail: sourceDetail, errorText: errorText, nextColorName: nextColorName,
     validMinutes: validMinutes, validUnit: validUnit, cleanLabel: cleanLabel, parseReminders: parseReminders,
     soonestTimer: soonestTimer, finishedTimers: finishedTimers, remainingLabel: remainingLabel,
     weatherInfo: weatherInfo, zoneWall: zoneWall, offsetFromLocal: offsetFromLocal, zoneCity: zoneCity

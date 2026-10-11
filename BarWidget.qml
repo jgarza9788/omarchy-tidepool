@@ -126,6 +126,25 @@ BarWidget {
     if (on) hoveredExtra = name
     else if (hoveredExtra === name) hoveredExtra = ""
   }
+  // Extra boxes register themselves so a click can be matched to one by its
+  // position (used while the panel covers the bar and hover is not delivered).
+  property var extraBoxes: ({})
+  function registerExtra(name, item) { var m = Object.assign({}, extraBoxes); m[name] = item; extraBoxes = m }
+  function unregisterExtra(name, item) {
+    if (extraBoxes[name] !== item) return
+    var m = Object.assign({}, extraBoxes); delete m[name]; extraBoxes = m
+  }
+  function noteBarClick(x) {
+    var win = button.QsWindow.window
+    var hit = ""
+    if (win) for (var name in extraBoxes) {
+      var it = extraBoxes[name]
+      if (!it || !it.visible) continue
+      var left = it.mapToItem(win.contentItem, 0, 0).x
+      if (x >= left - Style.space(3) && x <= left + it.width + Style.space(3)) { hit = name; break }
+    }
+    hoveredExtra = hit
+  }
   function openExtra(name) {
     var tab = extraTabs[name] || "agenda"
     if (opened && panelLoader.item && panelLoader.item.tab === tab) close()
@@ -321,6 +340,8 @@ BarWidget {
               Behavior on color { ColorAnimation { duration: 140 } }
               Behavior on border.color { ColorAnimation { duration: 200 } }
               Behavior on implicitWidth { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+              Component.onCompleted: root.registerExtra(entry.modelData, box)
+              Component.onDestruction: root.unregisterExtra(entry.modelData, box)
 
               Text {
                 id: label

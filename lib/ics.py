@@ -223,6 +223,26 @@ def expand(start, rule, window_start, window_end, exdates):
             n += 1
 
 
+MEETING_HOSTS = (
+    "meet.google.com", "zoom.us", "zoomgov.com", "teams.microsoft.com", "teams.live.com",
+    "webex.com", "whereby.com", "gotomeeting.com", "goto.com", "bluejeans.com", "meet.jit.si",
+    "jitsi.org", "chime.aws", "around.co", "tuple.app", "huddle.slack.com", "discord.gg",
+)
+URL_RE = re.compile(r"https?://[^\s<>\"')\]]+", re.I)
+
+
+def find_meeting_url(*texts):
+    """The video-call link in an event's conference field, location, description
+    or URL, in that order: the first link on a known meeting provider, else ''.
+    (A plain website in the location is a venue, not a call.)"""
+    for t in texts:
+        for u in URL_RE.findall(t or ""):
+            host = re.sub(r"^https?://", "", u, flags=re.I).split("/")[0].split("?")[0].lower()
+            if any(host == h or host.endswith("." + h) for h in MEETING_HOSTS):
+                return u.rstrip(".,;")
+    return ""
+
+
 def parse_events(text, window_start, window_end):
     """Return a list of {uid, title, location, allDay, start, end} where start
     and end are date (all-day) or naive-local datetime, for every occurrence
@@ -252,6 +272,20 @@ def parse_events(text, window_start, window_end):
                     ev["title"] = unescape(value)
                 elif name == "LOCATION":
                     ev["location"] = unescape(value)
+                elif name == "DESCRIPTION":
+                    ev["description"] = unescape(value)
+                elif name == "X-GOOGLE-CONFERENCE" or name == "X-MICROSOFT-SKYPETEAMSMEETINGURL":
+                    ev["conference"] = value.strip()
+                elif name == "URL":
+                    ev["url"] = value.strip()
+                elif name == "ATTENDEE":
+                    cn = (params.get("CN") or "").strip()
+                    who = cn or re.sub(r"^mailto:", "", value, flags=re.I)
+                    if who:
+                        ev.setdefault("attendees", []).append(who)
+                elif name == "ORGANIZER":
+                    cn = (params.get("CN") or "").strip()
+                    ev["organizer"] = cn or re.sub(r"^mailto:", "", value, flags=re.I)
                 elif name == "STATUS" and value.upper() == "CANCELLED":
                     ev["cancelled"] = True
                 elif name == "DTSTART":
@@ -296,9 +330,15 @@ def parse_events(text, window_start, window_end):
             last = first
         if last < window_start or first > window_end:
             return
+        desc = (ev.get("description") or "").strip()
         out.append({"uid": ev.get("uid", ""), "title": ev.get("title", "(no title)"),
                     "location": ev.get("location", ""), "allDay": ev["allDay"],
-                    "start": start, "end": end})
+                    "start": start, "end": end,
+                    "description": desc[:600],
+                    "meetingUrl": find_meeting_url(ev.get("conference"), ev.get("location"), desc, ev.get("url")),
+                    "organizer": ev.get("organizer", ""),
+                    "attendees": (ev.get("attendees") or [])[:8],
+                    "attendeeCount": len(ev.get("attendees") or [])})
 
     for ev in masters:
         if ev["rrule"]:

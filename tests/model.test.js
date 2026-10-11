@@ -58,6 +58,15 @@ ok("agenda groups skip empty days", gr.length === 2 && gr[0].rows.length === 4 &
 ok("agenda one day", M.agendaGroups(items, now, 1, {}).length === 1);
 ok("agenda multi-day listed once", M.agendaGroups(overnight, at(11, 9, 0), 3, {}).length === 1);
 ok("agenda title", M.agendaTitle(1) === "" && M.agendaTitle(7) === "Next 7 days" && M.agendaTitle(3) === "Next 3 days");
+const nd = M.dueNotifications(items, at(11, 9, 20), 15, {});
+ok("due notifications", nd.length === 1 && nd[0].title === "Standup" && nd[0].key === "a||" + items[1].start);
+ok("none when off or too far", M.dueNotifications(items, at(11, 9, 20), 0, {}).length === 0 && M.dueNotifications(items, at(11, 9, 0), 5, {}).length === 0);
+ok("none once started", M.dueNotifications(items, at(11, 9, 40), 15, {}).length === 0);
+ok("all-day never notifies", M.dueNotifications([items[3]], at(11, 0, 0), 60, {}).length === 0);
+ok("notify setting", M.resolveSettings({}).notifyMinutes === 5 && M.resolveSettings({ notifyMinutes: 0 }).notifyMinutes === 0 && M.resolveSettings({ notifyMinutes: 999 }).notifyMinutes === 60);
+ok("safe urls", M.safeUrl("https://zoom.us/j/1") === "https://zoom.us/j/1" && M.safeUrl("http://localhost:5232/x") !== "" && M.safeUrl("mailto:") === "mailto:" && M.safeUrl("mailto:a@b.org") === "mailto:a@b.org");
+ok("unsafe urls", M.safeUrl("javascript:alert(1)") === "" && M.safeUrl("file:///etc/passwd") === "" && M.safeUrl("https://u:p@evil.com/") === "" && M.safeUrl("https://a.com/x y") === "" && M.safeUrl("ftp://x") === "" && M.safeUrl("") === "" && M.safeUrl("https://x.com/\nrm") === "");
+ok("attendee summary", M.attendeeSummary({ attendees: ["Ana", "Bo"], attendeeCount: 2 }) === "Ana, Bo" && M.attendeeSummary({ attendees: ["a", "b", "c", "d"], attendeeCount: 6 }) === "a, b, c +3" && M.attendeeSummary({}) === "");
 // upcoming + chip
 const up = M.upcoming(items, now, 3, {});
 ok("upcoming order, no all-day", up.map(u => u.item.title).join() === "Standup,Hidden,Late");
@@ -105,6 +114,14 @@ ok("title falls back to host", M.sourceTitle({ kind: "ics-url", url: "https://ca
 ok("error text", M.errorText("auth-error").length > 0 && M.errorText("http-404") === "Server said 404" && M.errorText("weird") === "Sync failed" && M.errorText("") === "");
 ok("next color name", M.nextColorName([{ colorName: "accent" }]) === "blue");
 
+const wc = (o) => M.webCalendar(o);
+ok("google feed", wc({ kind: "ics-url", url: "https://calendar.google.com/calendar/ical/jo%40gmail.com/private-abc123/basic.ics" }).url === "https://calendar.google.com/calendar/u/0/r?authuser=jo%40gmail.com");
+ok("google link keeps the key out", !/private/.test(wc({ kind: "ics-url", url: "https://calendar.google.com/calendar/ical/jo%40gmail.com/private-abc123/basic.ics" }).url));
+ok("google shared calendar has no account", wc({ kind: "ics-url", url: "https://calendar.google.com/calendar/ical/abc123%40group.calendar.google.com/public/basic.ics" }).url === "https://calendar.google.com/calendar/u/0/r");
+ok("providers", wc({ kind: "ics-url", url: "https://outlook.office365.com/owa/calendar/x/y/reachcalendar.ics" }).name === "Outlook" && wc({ kind: "caldav", url: "https://p12-caldav.icloud.com/123/calendars/" }).name === "iCloud" && wc({ kind: "caldav", url: "https://caldav.fastmail.com/dav/" }).name === "Fastmail");
+ok("nextcloud", wc({ kind: "caldav", url: "https://cloud.example.com/remote.php/dav/calendars/me/" }).url === "https://cloud.example.com/apps/calendar");
+ok("generic server", wc({ kind: "caldav", url: "https://dav.example.org/cal/" }).url === "https://dav.example.org/");
+ok("no web calendar for files or lan", wc({ kind: "file", path: "/a.ics" }) === null && wc({ kind: "vdir", path: "/d" }) === null && wc({ kind: "caldav", url: "http://192.168.1.2/dav", allowLocalNetwork: true }) === null);
 // timers
 const rem = JSON.stringify({ reminders: [
   { unit: "omarchy-reminder-25m-1", message: " Focus\n", minutes: 25, at: 2000 },

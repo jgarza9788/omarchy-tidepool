@@ -8,6 +8,8 @@ theme accent, so it blends in rather than sitting on top. The panel is a tab tha
 bar edge, with the concave "rounded tab" corners of
 [css-tip.com/rounded-tab](https://css-tip.com/rounded-tab/).
 
+![Tidepool: the bar with a next-event chip, a timer and the weather, and the Agenda tab open above it](preview.png)
+
 Tidepool started as a bar-resident, theme-colored take on the
 [Nookisle](https://github.com/bavanchun/nookisle) island, and keeps its calendar-source model.
 
@@ -20,7 +22,8 @@ Tidepool started as a bar-resident, theme-colored take on the
   (`Standup · 12m`), a running timer, the playing track and the weather.
 - Show 0–4 extras at once. If more are switched on than fit, they swap page by page with dots for
   the rest. Draw them plain, in a border, or as buttons.
-- Click an extra to open the panel on its own tab.
+- Click an extra to open the panel on its own tab. A heads-up notification fires a few minutes
+  before each event, with the room and the call link.
 - A hairline under the widget fills as the day passes, with a tick for every event.
 - Hover for a peek at the next three events.
 
@@ -28,7 +31,7 @@ Tidepool started as a bar-resident, theme-colored take on the
 
 | Tab | |
 | --- | --- |
-| **Agenda** | Month grid and the day's events, or the next 3 / 7 / 14 / 30 days grouped by day. |
+| **Agenda** | Month grid and the day's events, or the next 3 / 7 / 14 / 30 days grouped by day. Events with a call link (Meet, Zoom, Teams, Webex…) get a **Join** button; click an event for its organizer, attendees and description. Buttons at the bottom open your web calendar in the default browser, and your mail app. |
 | **Timers** | Presets, custom minutes and a pomodoro. They are real Omarchy reminders. |
 | **Player** | Any MPRIS player: art, seek bar, shuffle, repeat, volume, a player switcher and a live audio spectrum. |
 | **Weather** | Current conditions and a 5-day forecast. |
@@ -62,6 +65,17 @@ The stock clock stays installed, so switching back is a one-line change.
 Or clone by hand into `~/.config/omarchy/plugins/jgarza.tidepool`, run
 `omarchy-shell shell rescanPlugins` and `omarchy plugin enable jgarza.tidepool`.
 
+## Uninstall
+
+```sh
+omarchy plugin remove jgarza.tidepool
+```
+
+Then put `{ "id": "omarchy.clock" }` back in `bar.layout.center` (and drop `centerAnchor` if you
+set it). Your calendar settings stay in `~/.config/jgarza.tidepool/` and `~/.local/state/jgarza.tidepool/`;
+delete those folders to remove them, and any CalDAV passwords with
+`secret-tool clear service tidepool`.
+
 ## Calendars
 
 Add calendars in **Settings → Calendars**. Source types:
@@ -75,6 +89,8 @@ Add calendars in **Settings → Calendars**. Source types:
 Safety rules: `https` only (or `http://localhost`); no credentials inside URLs; private and local
 addresses (including Tailscale's `100.64.0.0/10`) are blocked unless you tick *Allow local network*
 on that source; redirects are re-checked against the same rules.
+
+Event details (description, organizer, attendees) and the call link come straight from the feed; nothing is sent anywhere. Links are only opened when you click them, and only `http(s)` and `mailto:` are ever handed to the desktop.
 
 Sources and agenda options are stored in `~/.config/jgarza.tidepool/settings.json` (mode 0600).
 *Import from Nookisle* copies sources from `~/.config/nookisle/settings.json`.
@@ -93,6 +109,7 @@ Everything has a switch in the Settings window. They are also plain keys on the 
 | `extraStyle` | `plain` | `plain`, `border` or `button` |
 | `rotateSeconds` | `6` | seconds per page when extras swap |
 | `soonMinutes` | `15` | events this close are drawn in the accent color |
+| `notifyMinutes` | `5` | desktop notification this many minutes before an event (0 = off) |
 | `chipHorizonHours`, `chipMaxChars` | `12`, `22` | when the event chip appears, and how long its title may be |
 | `peekOnHover`, `tideLine` | `true` | hover peek, day-progress line |
 | `weekStart` | `monday` | month grid |
@@ -138,7 +155,7 @@ bin/tidepool-helper  bin/cava.conf                                       entry p
 
 ```sh
 node tests/model.test.js                                # model
-python3 -I -B -m unittest discover tests                # helper
+python3 -I -B -m unittest discover tests                # helper, ICS, and a CalDAV server round-trip
 ```
 
 Quickshell caches compiled QML. If an edit seems to be ignored, run

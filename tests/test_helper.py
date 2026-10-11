@@ -154,6 +154,42 @@ class HelperTest(unittest.TestCase):
         self.assertTrue(all(not n.startswith("Etc/") for n in names("gmt")))
         self.assertLessEqual(len(names("a" * 2)), 8)
 
+    def test_meeting_url(self):
+        f = h.ics.find_meeting_url
+        self.assertEqual(f("", "Room 4", "Join: https://zoom.us/j/123456?pwd=abc. See you"), "https://zoom.us/j/123456?pwd=abc")
+        self.assertEqual(f("https://meet.google.com/abc-defg-hij", "", ""), "https://meet.google.com/abc-defg-hij")
+        self.assertEqual(f("", "", "https://us02web.zoom.us/j/9"), "https://us02web.zoom.us/j/9")
+        self.assertEqual(f("", "", "Teams: https://teams.microsoft.com/l/meetup-join/abc"), "https://teams.microsoft.com/l/meetup-join/abc")
+        self.assertEqual(f("", "https://example.com/venue", "see https://docs.google.com/x"), "")
+        self.assertEqual(f("", "https://notzoom.us.evil.com/j/1", ""), "")
+        self.assertEqual(f(None, None, None), "")
+
+    def test_event_details_parsed(self):
+        d = self.today.strftime("%Y%m%d")
+        text = ("BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:x\r\nSUMMARY:Sync\r\nDTSTART:%sT100000\r\nDTEND:%sT103000\r\n"
+                "LOCATION:Room 4\r\nDESCRIPTION:Agenda\\nJoin https://zoom.us/j/5\r\nORGANIZER;CN=Ana:mailto:ana@x.org\r\n"
+                "ATTENDEE;CN=Bo:mailto:bo@x.org\r\nATTENDEE:mailto:cy@x.org\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n") % (d, d)
+        ev = h.ics.parse_events(text, self.today, self.today)[0]
+        self.assertEqual(ev["meetingUrl"], "https://zoom.us/j/5")
+        self.assertEqual(ev["organizer"], "Ana")
+        self.assertEqual(ev["attendees"], ["Bo", "cy@x.org"])
+        self.assertEqual(ev["attendeeCount"], 2)
+        self.assertIn("Agenda", ev["description"])
+
+    def test_notify_due_once(self):
+        sent = []
+        h.send_notification = lambda title, body, urgency="normal": (sent.append((title, body)) or True)
+        soon = (dt.datetime.now() + dt.timedelta(minutes=4)).strftime("%Y-%m-%dT%H:%M:%S")
+        far = (dt.datetime.now() + dt.timedelta(hours=5)).strftime("%Y-%m-%dT%H:%M:%S")
+        items = [{"key": "k1", "title": "Standup", "start": soon, "location": "Room 4", "url": "https://zoom.us/j/1"},
+                 {"key": "k2", "title": "Later", "start": far}]
+        self.assertEqual(h.notify_due({"items": items})["sent"], 1)
+        self.assertEqual(sent[0][0], "Standup")
+        self.assertIn("Room 4", sent[0][1])
+        self.assertIn("Join: https://zoom.us/j/1", sent[0][1])
+        self.assertEqual(h.notify_due({"items": items})["sent"], 0)   # not twice
+        self.assertEqual(len(sent), 1)
+
     def test_zones(self):
         z = h.zones({"zones": ["UTC", "Asia/Tokyo", "Not/AZone"]})["zones"]
         self.assertEqual(z["UTC"]["offsetMin"], 0)

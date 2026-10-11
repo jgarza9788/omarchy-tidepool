@@ -20,7 +20,7 @@ Item {
 
   SystemClock {
     precision: SystemClock.Minutes
-    onDateChanged: root.nowMs = Date.now()
+    onDateChanged: { root.nowMs = Date.now(); root.checkNotifications() }
   }
   // Seconds only matter while a timer is counting down.
   Timer {
@@ -82,6 +82,14 @@ Item {
     return s.colorName ? themeColor(s.colorName) : (s.color ? s.color : Color.accent)
   }
 
+  // Desktop notifications a few minutes before an event. The helper remembers
+  // what it already sent, so a restart does not repeat them.
+  function checkNotifications() {
+    if (!loaded || cfg.notifyMinutes <= 0) return
+    var due = Model.dueNotifications(items, new Date(), cfg.notifyMinutes, calendar)
+    if (due.length > 0) helper("notify-due", { items: due }, function () {}, 20)
+  }
+
   readonly property var upcomingList: Model.upcoming(items, now, 3, calendar)
   readonly property var nextEvent: upcomingList.length > 0 ? upcomingList[0] : null
   readonly property var nextChip: {
@@ -127,6 +135,7 @@ Item {
       items = r.items || []
       errors = r.errors || ({})
       syncedAt = r.syncedAt || ""
+      checkNotifications()
     }, 120)
   }
 
@@ -336,6 +345,12 @@ Item {
     if (!hasPlayer) return ""
     var t = player.trackTitle || "", a = player.trackArtist || ""
     return a && t ? a + " – " + t : (t || a)
+  }
+
+  // Open a web or mail link in the default browser / mail app.
+  function openUrl(url) {
+    var safe = Model.safeUrl(url)
+    if (safe !== "") Quickshell.execDetached(["xdg-open", safe])
   }
 
   // ── Helper process plumbing ──────────────────────────────────────────────
