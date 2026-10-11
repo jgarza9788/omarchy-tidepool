@@ -16,6 +16,7 @@ import "../Model.js" as Model
 //           grow and shrink with the sound, loud bands lighting more rows
 //   wave    a smooth filled area under the spectrum
 //   line    the same curve, stroked
+//   none    off: nothing is drawn and cava is not started
 //   fire    digital fire: square cells that flicker, in the accent and the
 //           colours next to it on the wheel
 Item {
@@ -35,7 +36,9 @@ Item {
   readonly property real slotW: (width - (bars - 1) * gap) / bars
   readonly property real stroke: Math.max(1, Math.min(Style.space(2), height / 6))
 
-  visible: available
+  // `none` switches the visualizer off: hidden, and cava does not run.
+  readonly property bool shown: available && styleName !== "none"
+  visible: shown
   implicitHeight: Style.space(110)
 
   onActiveChanged: if (!active) values = []
@@ -43,7 +46,7 @@ Item {
   Process {
     id: cava
     command: ["cava", "-p", Qt.resolvedUrl("../bin/" + viz.config).toString().replace(/^file:\/\//, "")]
-    running: viz.active
+    running: viz.active && viz.styleName !== "none"
     stdout: SplitParser {
       onRead: function (line) { viz.values = Model.parseBars(line, viz.bars); viz.tick++ }
     }

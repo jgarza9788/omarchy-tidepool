@@ -115,7 +115,7 @@
         "key": "visualizerStyle",
         "type": "enum",
         "label": "Visualizer style",
-        "description": "How the spectrum is drawn, in the Media tab and on the bar.",
+        "description": "How the spectrum is drawn, in the Media tab and on the bar. None turns it off.",
         "defaultValue": "bars",
         "options": [
           {
@@ -147,6 +147,11 @@
             "value": "fire",
             "label": "Fire",
             "description": "Digital fire: flickering square cells in the accent and its neighbouring colors."
+          },
+          {
+            "value": "none",
+            "label": "None",
+            "description": "Visualizer off: nothing is drawn and cava does not run."
           }
         ]
       },

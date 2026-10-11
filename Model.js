@@ -16,8 +16,8 @@ var GLYPH = {
 function glyph(name) { return GLYPH[name] ? String.fromCodePoint(GLYPH[name]) : "" }
 
 // ── Settings ────────────────────────────────────────────────────────────────
-var VIZ_STYLES = ["bars", "mirror", "dots", "wave", "line", "fire"]
-var VIZ_LABELS = { bars: "Bars", mirror: "Mirror", dots: "Dots", wave: "Wave", line: "Line", fire: "Fire" }
+var VIZ_STYLES = ["bars", "mirror", "dots", "wave", "line", "fire", "none"]
+var VIZ_LABELS = { bars: "Bars", mirror: "Mirror", dots: "Dots", wave: "Wave", line: "Line", fire: "Fire", none: "None" }
 // The name shown for a style, and the style `delta` steps away (wraps round).
 function vizLabel(style) { return VIZ_LABELS[style] || VIZ_LABELS.bars }
 function vizStep(style, delta) {

@@ -353,10 +353,10 @@ FloatingWindow {
           }
           SettingRow {
             label: "Visualizer style"
-            description: "How the spectrum is drawn, in the Media tab and on the bar."
+            description: "How the spectrum is drawn, in the Media tab and on the bar. None turns the visualizer off."
             Choice {
               value: win.cfg.visualizerStyle
-              options: [{ value: "bars", label: "Bars" }, { value: "mirror", label: "Mirror" }, { value: "dots", label: "Dots" }, { value: "wave", label: "Wave" }, { value: "line", label: "Line" }, { value: "fire", label: "Fire" }]
+              options: [{ value: "bars", label: "Bars" }, { value: "mirror", label: "Mirror" }, { value: "dots", label: "Dots" }, { value: "wave", label: "Wave" }, { value: "line", label: "Line" }, { value: "fire", label: "Fire" }, { value: "none", label: "None" }]
               onPicked: function (v) { win.set({ visualizerStyle: v }) }
             }
           }
@@ -375,9 +375,9 @@ FloatingWindow {
               styleName: win.cfg.visualizerStyle
             }
             PText {
-              visible: !win.store || !win.store.playing
+              visible: win.cfg.visualizerStyle === "none" || !win.store || !win.store.playing
               anchors.centerIn: parent
-              text: "Play something to see a preview."
+              text: win.cfg.visualizerStyle === "none" ? "Visualizer is off." : "Play something to see a preview."
               tone: Qt.alpha(Color.popups.text, 0.5)
             }
           }

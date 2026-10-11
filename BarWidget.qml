@@ -366,12 +366,12 @@ BarWidget {
                 // A few spectrum bars beside the track while it plays.
                 Visualizer {
                   id: miniViz
-                  visible: entry.modelData === "media" && root.cfg.miniVisualizer && store.playing && available
+                  visible: entry.modelData === "media" && root.cfg.miniVisualizer && root.cfg.visualizerStyle !== "none" && store.playing && available
                   anchors.verticalCenter: parent.verticalCenter
                   width: visible ? Style.space(22) : 0
                   height: Style.space(12)
                   implicitHeight: height
-                  active: entry.modelData === "media" && root.cfg.miniVisualizer && store.playing
+                  active: entry.modelData === "media" && root.cfg.miniVisualizer && root.cfg.visualizerStyle !== "none" && store.playing
                   config: "cava-mini.conf"
                   styleName: root.cfg.visualizerStyle
                   bars: 8
