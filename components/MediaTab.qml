@@ -290,8 +290,6 @@ Item {
     radius: Style.space(8)
     // The card's own colour (the theme's bar colour lifted a little), translucent.
     color: Qt.alpha(Qt.tint(Color.bar.background, Qt.alpha(Color.bar.text, 0.07)), 0.78)
-    border.width: 1
-    border.color: Qt.alpha(Color.popups.text, 0.12)
 
     Row {
       id: pick
