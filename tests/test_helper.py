@@ -1,6 +1,7 @@
 """Run: python3 -I -B -m unittest discover tests   (from the plugin dir)"""
 import datetime as dt
 import http.server
+import json
 import os
 import sys
 import tempfile
@@ -189,6 +190,56 @@ class HelperTest(unittest.TestCase):
         self.assertIn("Join: https://zoom.us/j/1", sent[0][1])
         self.assertEqual(h.notify_due({"items": items})["sent"], 0)   # not twice
         self.assertEqual(len(sent), 1)
+
+    def test_ancestors_walk_up_and_stop(self):
+        tree = {900: 800, 800: 700, 700: 1, 5: 5}
+        self.assertEqual(h.ancestors(900, tree.get), [900, 800, 700])
+        self.assertEqual(h.ancestors(5, tree.get), [5])            # a loop does not hang
+        self.assertEqual(h.ancestors(1, tree.get), [])
+        self.assertEqual(h.ancestors(900, lambda p: p + 1, limit=4), [900, 901, 902, 903])
+        self.assertGreater(len(h.ancestors(os.getpid())), 1)       # the real /proc works
+
+    def test_pick_window_prefers_the_owning_process(self):
+        win = lambda addr, pid, cls, title, **k: dict(address=addr, pid=pid, **{"class": cls}, title=title, mapped=True, **k)
+        clients = [win("0x1", 100, "ghostty", "~"), win("0x2", 200, "ghostty", "Burning Love"), win("0x3", 300, "plezy", "Plezy")]
+        # a TUI (pid 250) runs inside terminal 200: found through its parent
+        self.assertEqual(h.pick_window(clients, [250, 200, 1], {})["address"], "0x2")
+        self.assertEqual(h.pick_window(clients, [300], {})["address"], "0x3")
+        # one process owning several windows: the track title decides
+        shared = [win("0xa", 7, "ghostty", "~"), win("0xb", 7, "ghostty", "Song Name - Artist")]
+        self.assertEqual(h.pick_window(shared, [8, 7], {"title": "Song Name"})["address"], "0xb")
+        # hidden / unmapped windows are not used
+        self.assertIsNone(h.pick_window([dict(win("0x9", 5, "x", "x"), mapped=False)], [5], {}))
+
+    def test_pick_window_falls_back_to_class_and_title(self):
+        clients = [dict(address="0x1", pid=1, title="Home", mapped=True, **{"class": "zen"}),
+                   dict(address="0x2", pid=2, title="Mix - YouTube", mapped=True, **{"class": "chromium"})]
+        self.assertEqual(h.pick_window(clients, [], {"desktopEntry": "chromium"})["address"], "0x2")
+        self.assertEqual(h.pick_window(clients, [], {"title": "mix - youtube"})["address"], "0x2")
+        self.assertEqual(h.pick_window(clients, [], {"identity": "Zen"})["address"], "0x1")
+        self.assertIsNone(h.pick_window(clients, [], {"title": "nothing like it"}))
+        self.assertIsNone(h.pick_window(clients, [], {}))
+
+    def test_focus_app_dispatches_only_a_valid_address(self):
+        calls = []
+        def fake(cmd, timeout=4):
+            calls.append(cmd)
+            class R: pass
+            r = R(); r.returncode = 0
+            if cmd[0] == "busctl": r.stdout = "u 300\n"
+            elif cmd[:2] == ["hyprctl", "clients"]: r.stdout = json.dumps([{"address": "0x3", "pid": 300, "class": "plezy", "title": "Plezy", "mapped": True}])
+            else: r.stdout = "ok"
+            return r
+        orig = h._run; h._run = fake
+        try:
+            out = h.focus_app({"dbusName": "org.mpris.MediaPlayer2.plezy"})
+            self.assertTrue(out["ok"]); self.assertEqual(out["title"], "Plezy")
+            self.assertIn('address:0x3', calls[-1][-1])
+            calls.clear()
+            h.focus_app({"dbusName": "evil; rm -rf /"})                 # never reaches busctl
+            self.assertFalse(any(c[0] == "busctl" for c in calls))
+        finally:
+            h._run = orig
 
     def test_zones(self):
         z = h.zones({"zones": ["UTC", "Asia/Tokyo", "Not/AZone"]})["zones"]

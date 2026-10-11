@@ -33,7 +33,7 @@ Tidepool started as a bar-resident, theme-colored take on the
 | --- | --- |
 | **Agenda** | Month grid and the day's events, or the next 3 / 7 / 14 / 30 days grouped by day. Events with a call link (Meet, Zoom, Teams, Webex…) get a **Join** button; click an event for its organizer, attendees and description. Buttons at the bottom open the web pages that go with the accounts you've added, in your default browser (Google: Calendar, Tasks and Gmail; Outlook: Calendar, To Do and Mail; iCloud: Calendar, Reminders and Mail; Fastmail: Calendar and Mail; Nextcloud: Calendar and Tasks), plus a Mail button for your mail app. |
 | **Timers** | Presets, custom minutes and a pomodoro. They are real Omarchy reminders. |
-| **Media** | Whatever is playing, in any MPRIS app: art, seek bar, shuffle, repeat, volume, an app switcher and a live audio spectrum with a ‹ style › switcher in its corner. |
+| **Media** | Whatever is playing, in any MPRIS app: art, seek bar, shuffle, repeat, volume, an app list and a live audio spectrum with a ‹ style › switcher in its corner. Clicking an app brings its window to the front (it works for terminal players, native apps and browsers). If the chosen app has nothing playing, the tab says so and keeps the app list so you can pick another. |
 | **Weather** | Current conditions and a 5-day forecast. |
 | **Clocks** | World clocks. |
 
@@ -138,6 +138,7 @@ Shell commands:
 omarchy-shell jgarza.tidepool open|close|toggle|sync|cycleMode
 omarchy-shell jgarza.tidepool tab agenda|timers|media|weather|clocks
 omarchy-shell jgarza.tidepool settings [section]
+omarchy-shell jgarza.tidepool app [name]        # make the Media tab follow an app; no name = automatic
 omarchy-shell jgarza.tidepool timer <minutes> <label>
 ```
 

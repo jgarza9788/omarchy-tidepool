@@ -18,6 +18,7 @@ import hashlib
 import ipaddress
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -645,6 +646,100 @@ def notify_due(args):
     return {"sent": sent}
 
 
+# ── Focus the window of a media app ──────────────────────────────────────────
+DBUS_NAME_RE = re.compile(r"^org\.mpris\.MediaPlayer2\.[A-Za-z0-9_.\-]+$")
+ADDRESS_RE = re.compile(r"^0x[0-9a-f]+$")
+
+
+def ppid_of(pid):
+    """Parent pid from /proc, or 0."""
+    try:
+        with open("/proc/%d/stat" % pid, "r") as f:
+            data = f.read()
+        return int(data[data.rindex(")") + 2:].split()[1])
+    except (OSError, ValueError, IndexError):
+        return 0
+
+
+def ancestors(pid, parent=ppid_of, limit=16):
+    """[pid, parent, grandparent, ...], stopping at init."""
+    chain = []
+    while pid > 1 and pid not in chain and len(chain) < limit:
+        chain.append(pid)
+        pid = parent(pid)
+    return chain
+
+
+def _title_score(client, hints):
+    title = (client.get("title") or "").lower()
+    score = 0
+    for key, weight in (("title", 3), ("identity", 1)):
+        want = (hints.get(key) or "").strip().lower()
+        if want and want in title:
+            score += weight
+    return score
+
+
+def pick_window(clients, chain, hints):
+    """The window that belongs to a media app: the one owned by the app's
+    process or the nearest parent that owns a window (a TUI lives inside its
+    terminal); failing that, the best class / title match. hints: title
+    (current track), identity, desktopEntry. None if nothing fits."""
+    usable = [c for c in clients if c.get("mapped", True) and not c.get("hidden", False)]
+    for pid in chain:
+        owned = [c for c in usable if c.get("pid") == pid]
+        if owned:
+            return max(owned, key=lambda c: _title_score(c, hints))
+    entry = (hints.get("desktopEntry") or "").strip().lower()
+    ident = (hints.get("identity") or "").strip().lower()
+    best, best_score = None, 0
+    for c in usable:
+        cls = ((c.get("class") or "") + " " + (c.get("initialClass") or "")).lower()
+        score = _title_score(c, hints)
+        if entry and entry in cls:
+            score += 5
+        if ident and ident in cls:
+            score += 4
+        if score > best_score:
+            best, best_score = c, score
+    return best
+
+
+def _run(cmd, timeout=4):
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
+def focus_app(args):
+    """Bring the window of a media app (an MPRIS player) to the front."""
+    name = str(args.get("dbusName", ""))
+    pid = 0
+    if DBUS_NAME_RE.match(name):
+        r = _run(["busctl", "--user", "call", "org.freedesktop.DBus", "/org/freedesktop/DBus",
+                  "org.freedesktop.DBus", "GetConnectionUnixProcessID", "s", name])
+        if r and r.returncode == 0:
+            parts = r.stdout.split()
+            if len(parts) == 2 and parts[1].isdigit():
+                pid = int(parts[1])
+    r = _run(["hyprctl", "clients", "-j"])
+    if not r or r.returncode != 0:
+        raise HelperError("could not read the window list", "no-compositor")
+    try:
+        clients = json.loads(r.stdout)
+    except ValueError:
+        raise HelperError("could not read the window list", "no-compositor")
+    win = pick_window(clients, ancestors(pid) if pid else [], args)
+    if not win:
+        return {"ok": False}
+    address = str(win.get("address", ""))
+    if not ADDRESS_RE.match(address):
+        return {"ok": False}
+    r = _run(["hyprctl", "dispatch", 'hl.dsp.focus({ window = "address:%s" })' % address])
+    return {"ok": bool(r and r.returncode == 0), "title": win.get("title", ""), "class": win.get("class", "")}
+
+
 # ── CLI ──────────────────────────────────────────────────────────────────────
 def _out(obj):
     sys.stdout.write(json.dumps(obj) + "\n")
@@ -684,6 +779,8 @@ def main(argv):
             _out(weather(args))
         elif cmd == "notify-due":
             _out(notify_due(args))
+        elif cmd == "focus-app":
+            _out(focus_app(args))
         elif cmd == "search-zones":
             _out(search_zones(args))
         elif cmd == "zones":

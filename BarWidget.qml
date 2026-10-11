@@ -218,6 +218,19 @@ BarWidget {
     function toggle(): void { root.togglePanel() }
     function tab(name: string): void { root.showTab(name) }
     function sync(): void { store.sync() }
+    // Make the Media tab follow an app, by (part of) its name, e.g. `app plezy`. "" resets it.
+    function app(name: string): string {
+      var want = String(name || "").toLowerCase()
+      if (want === "") { store.preferredId = ""; return "auto" }
+      for (var i = 0; i < store.players.length; ++i) {
+        var p = store.players[i]
+        if ((p.identity || "").toLowerCase().indexOf(want) >= 0 || (p.dbusName || "").toLowerCase().indexOf(want) >= 0) {
+          store.preferredId = store.playerId(p)
+          return p.identity || p.dbusName
+        }
+      }
+      return "no such app"
+    }
     function timer(minutes: int, label: string): void { store.startTimer(minutes, label) }
     function cycleMode(): void { root.cycleMode() }
     function settings(section: string): void { root.openSettings(section) }

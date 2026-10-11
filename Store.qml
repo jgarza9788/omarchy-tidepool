@@ -347,6 +347,15 @@ Item {
     return a && t ? a + " – " + t : (t || a)
   }
 
+  // Bring a media app's window to the front. The helper finds the window from
+  // the app's process (a TUI lives inside its terminal), so it works for a
+  // terminal player, a native app or a browser.
+  function focusApp(player) {
+    if (!player || !player.dbusName) return
+    helper("focus-app", { dbusName: player.dbusName, identity: player.identity || "",
+      desktopEntry: player.desktopEntry || "", title: player.trackTitle || "" }, function () {}, 10)
+  }
+
   // Open a web or mail link in the default browser / mail app.
   function openUrl(url) {
     var safe = Model.safeUrl(url)
@@ -357,7 +366,7 @@ Item {
   readonly property string helperPath: Qt.resolvedUrl("bin/tidepool-helper").toString().replace(/^file:\/\//, "")
   readonly property var helperEnv: {
     var e = { PATH: "/usr/bin", HOME: Quickshell.env("HOME"), LANG: "C.UTF-8" }
-    var keep = ["XDG_CONFIG_HOME", "XDG_STATE_HOME", "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS", "TZ"]
+    var keep = ["XDG_CONFIG_HOME", "XDG_STATE_HOME", "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS", "HYPRLAND_INSTANCE_SIGNATURE", "TZ"]
     for (var i = 0; i < keep.length; ++i) {
       var v = Quickshell.env(keep[i])
       if (v) e[keep[i]] = v

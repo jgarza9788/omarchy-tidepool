@@ -87,7 +87,13 @@ Panel {
   }
   onTabChanged: loadTab()
   onStoreChanged: loadTab()
-  onOpenedChanged: if (opened && store) store.refreshTimers()
+  onOpenedChanged: {
+    if (!store) return
+    if (opened) store.refreshTimers()
+    // The app picked in the Media tab only lasts while the panel is open, so the
+    // bar goes back to showing whatever is actually playing.
+    else store.preferredId = ""
+  }
 
   readonly property color fg: Color.bar.text
   readonly property color cardColor: Qt.tint(Color.bar.background, Qt.alpha(Color.bar.text, 0.07))
@@ -226,6 +232,7 @@ Panel {
                 ignoreUnknownSignals: true
                 function onGotoTab(name) { root.tab = name }
                 function onSettingsRequested(section) { root.openSettings(section) }
+                function onCloseRequested() { root.close() }
               }
               onLoaded: settle.restart()
               ParallelAnimation {

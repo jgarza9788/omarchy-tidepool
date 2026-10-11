@@ -12,6 +12,7 @@ Item {
   property var host: null
   property bool typing: false
   signal gotoTab(string name)
+  signal closeRequested()
 
   readonly property var p: store.player
   readonly property bool has: store.hasPlayer
@@ -45,6 +46,13 @@ Item {
   // Visualizer style: step to the previous / next and keep the choice.
   readonly property string vizStyle: store.cfg.visualizerStyle
   function stepVisualizer(delta) { if (host) host.persist({ visualizerStyle: Model.vizStep(vizStyle, delta) }) }
+
+  // Follow an app and bring its window up front (the panel gets out of the way).
+  function pickApp(player) {
+    store.preferredId = store.playerId(player)
+    store.focusApp(player)
+    closeRequested()
+  }
 
   function toggleShuffle() { if (shuffleOk) p.shuffle = !p.shuffle }
   function cycleRepeat() {
@@ -253,20 +261,11 @@ Item {
       }
     }
 
-    // App switcher, only when several media apps are running.
-    Row {
-      visible: tab.store.players.length > 1
-      spacing: Style.space(6)
-      PText { anchors.verticalCenter: parent.verticalCenter; text: "App"; tone: Qt.alpha(Color.popups.text, 0.55); font.pixelSize: Style.font.bodySmall }
-      Repeater {
-        model: tab.store.players
-        ActionButton {
-          required property var modelData
-          text: modelData.identity || "App"
-          selected: modelData === tab.p
-          onClicked: tab.store.preferredId = tab.store.playerId(modelData)
-        }
-      }
+    // The media apps that are running; clicking one switches to its window.
+    AppRow {
+      store: tab.store
+      current: tab.p
+      onPicked: function (player) { tab.pickApp(player) }
     }
 
     Visualizer {
@@ -311,10 +310,12 @@ Item {
     }
   }
 
+  // Nothing playing in the chosen app (or nothing running at all): say so, and
+  // still list the apps so another one can be picked.
   Column {
     visible: !tab.has
     anchors.centerIn: parent
-    spacing: Style.space(8)
+    spacing: Style.space(10)
     PText {
       anchors.horizontalCenter: parent.horizontalCenter
       text: Model.glyph("media")
@@ -323,14 +324,21 @@ Item {
     }
     PText {
       anchors.horizontalCenter: parent.horizontalCenter
-      text: "Nothing is playing."
-      tone: Qt.alpha(Color.popups.text, 0.55)
+      text: "Nothing playing"
+      font.bold: true
+      tone: Qt.alpha(Color.popups.text, 0.65)
     }
     PText {
       anchors.horizontalCenter: parent.horizontalCenter
-      text: "Start something in any media app."
+      text: tab.store.players.length > 0 ? "Pick an app to switch to it." : "Start something in any media app."
       font.pixelSize: Style.font.bodySmall
-      tone: Qt.alpha(Color.popups.text, 0.4)
+      tone: Qt.alpha(Color.popups.text, 0.45)
+    }
+    AppRow {
+      anchors.horizontalCenter: parent.horizontalCenter
+      store: tab.store
+      current: tab.p
+      onPicked: function (player) { tab.pickApp(player) }
     }
   }
 }
