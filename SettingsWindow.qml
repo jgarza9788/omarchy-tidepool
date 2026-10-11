@@ -17,13 +17,14 @@ FloatingWindow {
   property string section: "datetime"
   // Old section names still work (shell commands, saved links).
   onSectionChanged: if (section === "general") section = "datetime"
+    else if (section === "music") section = "media"
 
   readonly property var cfg: store ? store.cfg : Model.resolveSettings({})
   readonly property var cal: store ? store.calendar : ({})
   readonly property var sections: [
     { id: "datetime", label: "Date & time", icon: "clock" },
     { id: "extras", label: "Bar extras", icon: "plus" },
-    { id: "music", label: "Music", icon: "music" },
+    { id: "media", label: "Media", icon: "media" },
     { id: "appearance", label: "Appearance", icon: "palette" },
     { id: "calendars", label: "Calendars", icon: "calendar-plus" },
     { id: "agenda", label: "Agenda", icon: "calendar" },
@@ -207,7 +208,7 @@ FloatingWindow {
             elide: Text.ElideNone
             font.pixelSize: Style.font.bodySmall
             tone: Qt.alpha(Color.popups.text, 0.55)
-            text: "The music extra has its own section: Music."
+            text: "The media extra has its own section: Media."
           }
           PText { text: "How they show"; font.bold: true; tone: Color.accent; topPadding: Style.space(16); bottomPadding: Style.space(2); elide: Text.ElideNone }
           SettingRow {
@@ -281,34 +282,34 @@ FloatingWindow {
         }
       }
 
-      // Music
+      // Media
       Flickable {
         anchors.fill: parent
         anchors.margins: Style.space(22)
-        visible: win.section === "music"
-        contentHeight: music.implicitHeight
+        visible: win.section === "media"
+        contentHeight: media.implicitHeight
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
         Column {
-          id: music
+          id: media
           width: parent.width
-          PText { text: "Music"; font.pixelSize: Style.font.heading; font.bold: true; elide: Text.ElideNone }
+          PText { text: "Media"; font.pixelSize: Style.font.heading; font.bold: true; elide: Text.ElideNone }
           Item { width: 1; height: Style.space(8) }
 
           SettingRow {
             label: "Show on the bar"
-            description: "Show the playing track on the bar after the divider. Turn this off to hide it, whatever the options below say."
-            Switch { checked: win.cfg.showMusic; onToggled: win.set({ showMusic: !win.cfg.showMusic }) }
+            description: "Show what is playing on the bar, after the divider. Turn this off to hide it, whatever the options below say."
+            Switch { checked: win.cfg.showMedia; onToggled: win.set({ showMedia: !win.cfg.showMedia }) }
           }
           SettingRow {
             label: "Show play / pause status"
-            description: "A play or pause icon before the track. The extra then stays on the bar while the track is paused; without it, it only shows while playing."
+            description: "A play or pause icon before the title. The extra then stays on the bar while paused; without it, it only shows while playing."
             Switch { checked: win.cfg.showMediaStatus; onToggled: win.set({ showMediaStatus: !win.cfg.showMediaStatus }) }
           }
           SettingRow {
             label: "Mini visualizer"
-            description: "A few live spectrum bars next to the track while it plays. Runs cava in the background, only while music is playing."
+            description: "A few live spectrum bars next to the title while it plays. Runs cava in the background, only while something is playing."
             Switch { checked: win.cfg.miniVisualizer; onToggled: win.set({ miniVisualizer: !win.cfg.miniVisualizer }) }
           }
 
@@ -319,7 +320,7 @@ FloatingWindow {
             elide: Text.ElideNone
             font.pixelSize: Style.font.bodySmall
             tone: Qt.alpha(Color.popups.text, 0.6)
-            text: "Works with any MPRIS player (Spotify, mpv, jellyfin-tui, a browser…). The Player tab in the panel has the full controls."
+            text: "Works with any MPRIS player (Spotify, mpv, jellyfin-tui, a browser…). The Media tab in the panel has the full controls."
           }
         }
       }

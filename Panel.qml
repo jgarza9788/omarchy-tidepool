@@ -6,7 +6,7 @@ import "components"
 import "Model.js" as Model
 
 // The Tidepool panel: today's time and weather over a tide line of the day,
-// then Agenda, Timers, Player, Weather and Calendars tabs. BarWidget.qml
+// then Agenda, Timers, Media, Weather and Clocks tabs. BarWidget.qml
 // owns the bar face and hands this panel the button to anchor against and
 // the shared Store.
 Panel {
@@ -23,7 +23,7 @@ Panel {
   readonly property var tabs: [
     { id: "agenda", label: "Agenda", icon: "calendar" },
     { id: "timers", label: "Timers", icon: "timer" },
-    { id: "player", label: "Player", icon: "music" },
+    { id: "media", label: "Media", icon: "media" },
     { id: "weather", label: "Weather", icon: "sun" },
     { id: "clocks", label: "Clocks", icon: "globe" }
   ]
@@ -34,7 +34,9 @@ Panel {
   }
 
   function showTab(name) {
-    if (name === "world") name = "weather"     // the old tab id
+    // Old tab names still work.
+    if (name === "world") name = "weather"
+    if (name === "player" || name === "music") name = "media"
     for (var i = 0; i < tabs.length; ++i) if (tabs[i].id === name) { tab = name; break }
     open()
   }
@@ -80,7 +82,7 @@ Panel {
     var props = { store: root.store }
     if (tab === "clocks") props.host = root
     tabLoader.setSource(Qt.resolvedUrl("components/" + {
-      agenda: "AgendaTab", timers: "TimersTab", player: "PlayerTab", weather: "WeatherTab", clocks: "ClocksTab"
+      agenda: "AgendaTab", timers: "TimersTab", media: "MediaTab", weather: "WeatherTab", clocks: "ClocksTab"
     }[tab] + ".qml"), props)
   }
   onTabChanged: loadTab()
@@ -92,7 +94,7 @@ Panel {
   readonly property var weather: store ? store.weather : null
   readonly property var badges: ({
     timers: !!store && store.timers.length > 0,
-    player: !!store && store.playing
+    media: !!store && store.playing
   })
 
   // Content eases in from the side the new tab sits on.

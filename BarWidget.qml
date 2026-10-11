@@ -8,7 +8,7 @@ import "Model.js" as Model
 
 // Tidepool: a clock that carries the next thing on your calendar.
 //
-// Left click opens the panel (agenda, timers, player, weather); hover shows
+// Left click opens the panel (agenda, timers, media, weather); hover shows
 // a peek of the next three events; right click cycles date / time / both; middle
 // click opens the timezone picker. Everything is drawn from the bar's own
 // foreground and the theme accent, so it sits in the bar like the clock it
@@ -42,12 +42,12 @@ BarWidget {
 
   // Extras after the divider: each has its own switch in the settings.
   readonly property var extras: Model.extrasFor(cfg, {
-    event: !!chip, timer: !!activeTimer, music: store.hasPlayer && (store.playing || cfg.showMediaStatus), weather: weatherText !== ""
+    event: !!chip, timer: !!activeTimer, media: store.hasPlayer && (store.playing || cfg.showMediaStatus), weather: weatherText !== ""
   })
   function extraText(name) {
     if (name === "event") return chip ? chip.text : ""
     if (name === "timer") return activeTimer ? Model.glyph("timer") + " " + Model.remainingLabel(activeTimer.endsAt - store.nowMs) : ""
-    if (name === "music") return Model.glyph(cfg.showMediaStatus ? (store.playing ? "play" : "pause") : "music") + " " + Model.ellipsize(store.playerLine, 28)
+    if (name === "media") return Model.glyph(cfg.showMediaStatus ? (store.playing ? "play" : "pause") : "media") + " " + Model.ellipsize(store.playerLine, 28)
     if (name === "weather") return weatherText
     return ""
   }
@@ -117,7 +117,7 @@ BarWidget {
       { store: store, host: root, section: root.settingsSection, visible: true })
   }
   // Each extra opens the panel on its own tab; clicking it again closes it.
-  readonly property var extraTabs: ({ event: "agenda", timer: "timers", music: "player", weather: "weather" })
+  readonly property var extraTabs: ({ event: "agenda", timer: "timers", media: "media", weather: "weather" })
   // The bar sends every click to the widget as one press, with no position.
   // So the extra under the pointer is tracked by hover, and a left press on
   // it opens that extra's tab.
@@ -173,10 +173,12 @@ BarWidget {
     for (var key in root.settings) if (key !== "id") entry[key] = root.settings[key]
     // First save after the old "face" setting: write out what it meant, then drop it.
     if (entry.face !== undefined) {
-      var flags = ["clockMode", "showEvent", "showTimer", "showMusic", "showWeather", "extrasShown"]
+      var flags = ["clockMode", "showEvent", "showTimer", "showMedia", "showWeather", "extrasShown"]
       for (var f = 0; f < flags.length; ++f) entry[flags[f]] = cfg[flags[f]]
       delete entry.face
     }
+    // The media switch used to be called showMusic.
+    if (entry.showMusic !== undefined) { if (entry.showMedia === undefined) entry.showMedia = cfg.showMedia; delete entry.showMusic }
     for (var k in values) entry[k] = values[k]
     root.settings = entry
     if (root.bar && root.bar.shell && typeof root.bar.shell.updateEntryInline === "function")
@@ -351,12 +353,12 @@ BarWidget {
                 // A few spectrum bars beside the track while it plays.
                 Visualizer {
                   id: miniViz
-                  visible: entry.modelData === "music" && root.cfg.miniVisualizer && store.playing && available
+                  visible: entry.modelData === "media" && root.cfg.miniVisualizer && store.playing && available
                   anchors.verticalCenter: parent.verticalCenter
                   width: visible ? Style.space(22) : 0
                   height: Style.space(12)
                   implicitHeight: height
-                  active: entry.modelData === "music" && root.cfg.miniVisualizer && store.playing
+                  active: entry.modelData === "media" && root.cfg.miniVisualizer && store.playing
                   config: "cava-mini.conf"
                   bars: 8
                   gap: Style.space(1)

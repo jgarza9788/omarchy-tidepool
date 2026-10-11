@@ -3,7 +3,7 @@ import Quickshell.Services.Mpris
 import qs.Commons
 import "../Model.js" as Model
 
-// Now playing, through MPRIS. Controls act on the player the store picked
+// Media: whatever is playing, through MPRIS (music, video, podcasts, a browser tab). Controls act on the player the store picked
 // (the one playing, else the first).
 Item {
   id: tab
@@ -89,7 +89,7 @@ Item {
         PText {
           anchors.centerIn: parent
           visible: !tab.p || !tab.p.trackArtUrl
-          text: Model.glyph("music")
+          text: Model.glyph("media")
           font.pixelSize: Style.space(64)
           tone: Qt.alpha(Color.accent, 0.6)
         }
@@ -244,16 +244,16 @@ Item {
       }
     }
 
-    // Player switcher, only when several are running.
+    // App switcher, only when several media apps are running.
     Row {
       visible: tab.store.players.length > 1
       spacing: Style.space(6)
-      PText { anchors.verticalCenter: parent.verticalCenter; text: "Player"; tone: Qt.alpha(Color.popups.text, 0.55); font.pixelSize: Style.font.bodySmall }
+      PText { anchors.verticalCenter: parent.verticalCenter; text: "App"; tone: Qt.alpha(Color.popups.text, 0.55); font.pixelSize: Style.font.bodySmall }
       Repeater {
         model: tab.store.players
         ActionButton {
           required property var modelData
-          text: modelData.identity || "Player"
+          text: modelData.identity || "App"
           selected: modelData === tab.p
           onClicked: tab.store.preferredId = tab.store.playerId(modelData)
         }
@@ -274,7 +274,7 @@ Item {
     spacing: Style.space(8)
     PText {
       anchors.horizontalCenter: parent.horizontalCenter
-      text: Model.glyph("music")
+      text: Model.glyph("media")
       font.pixelSize: Style.space(40)
       tone: Qt.alpha(Color.popups.text, 0.3)
     }
@@ -285,7 +285,7 @@ Item {
     }
     PText {
       anchors.horizontalCenter: parent.horizontalCenter
-      text: "Start something in any media player."
+      text: "Start something in any media app."
       font.pixelSize: Style.font.bodySmall
       tone: Qt.alpha(Color.popups.text, 0.4)
     }

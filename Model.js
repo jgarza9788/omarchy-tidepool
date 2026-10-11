@@ -5,7 +5,7 @@ var DAY_MS = 24 * 60 * 60 * 1000
 
 // Material Design icon code points (Nerd Font v3).
 var GLYPH = {
-  calendar: 0xF00ED, "calendar-plus": 0xF00F3, timer: 0xF051B, music: 0xF0386, play: 0xF040A, pause: 0xF03E4, next: 0xF04AD, prev: 0xF04AE,
+  calendar: 0xF00ED, "calendar-plus": 0xF00F3, timer: 0xF051B, media: 0xF0386, play: 0xF040A, pause: 0xF03E4, next: 0xF04AD, prev: 0xF04AE,
   left: 0xF0141, right: 0xF0142, close: 0xF0156, plus: 0xF0415, trash: 0xF01B4, refresh: 0xF0450, cog: 0xF0493,
   globe: 0xF01E7, check: 0xF012C, alert: 0xF0026, thermo: 0xF050F, wind: 0xF059D, pin: 0xF0403,
   clock: 0xF0150, palette: 0xF03D8,
@@ -19,7 +19,7 @@ function glyph(name) { return GLYPH[name] ? String.fromCodePoint(GLYPH[name]) : 
 var EXTRA_STYLES = ["plain", "border", "button"]
 var CLOCK_MODES = ["time", "date", "both"]
 var DEFAULTS = {
-  clockMode: "time", showEvent: true, showTimer: true, showMusic: false, showWeather: false, extrasShown: 4, extraStyle: "plain", showMediaStatus: false, miniVisualizer: false,
+  clockMode: "time", showEvent: true, showTimer: true, showMedia: false, showWeather: false, extrasShown: 4, extraStyle: "plain", showMediaStatus: false, miniVisualizer: false,
   format: "HH:mm", dateFormat: "ddd d MMM", peekOnHover: true,
   rotateSeconds: 6, soonMinutes: 15, notifyMinutes: 5, chipMaxChars: 22, chipHorizonHours: 12, tideLine: true, weatherCity: "", weatherLat: null, weatherLon: null, units: "metric",
   worldClocks: "", timerPresets: "5,15,25,45", weekStart: "monday"
@@ -39,8 +39,15 @@ function resolveSettings(raw) {
     for (var key in s) legacy[key] = s[key]
     var fill = function (k, v) { if (legacy[k] === undefined) legacy[k] = v }
     if (s.face === "clock") { fill("showEvent", false); fill("showTimer", false) }
-    else if (s.face === "rotate") { fill("extrasShown", 1); fill("showMusic", true) }
+    else if (s.face === "rotate") { fill("extrasShown", 1); fill("showMedia", true) }
     s = legacy
+  }
+  // The old name for the media extra's switch.
+  if (s.showMedia === undefined && s.showMusic !== undefined) {
+    var renamed = {}
+    for (var k3 in s) renamed[k3] = s[k3]
+    renamed.showMedia = s.showMusic
+    s = renamed
   }
   // The old rotate switch: on meant one at a time, off meant all together.
   if (s.extrasShown === undefined && s.rotateExtras !== undefined) {
@@ -52,7 +59,7 @@ function resolveSettings(raw) {
   var out = {}
   for (var k in DEFAULTS) out[k] = s[k] !== undefined && s[k] !== null ? s[k] : DEFAULTS[k]
   if (CLOCK_MODES.indexOf(out.clockMode) < 0) out.clockMode = DEFAULTS.clockMode
-  var flags = ["showEvent", "showTimer", "showMusic", "showWeather"]
+  var flags = ["showEvent", "showTimer", "showMedia", "showWeather"]
   for (var f = 0; f < flags.length; ++f) out[flags[f]] = out[flags[f]] !== false && out[flags[f]] !== "false"
   out.peekOnHover = out.peekOnHover !== false && out.peekOnHover !== "false"
   out.showMediaStatus = out.showMediaStatus === true || out.showMediaStatus === "true"
@@ -300,12 +307,12 @@ function chip(next, now, settings) {
 }
 
 // The extras after the divider, in order: only those that are switched on
-// and have something to show. `have` = { event, timer, music, weather } booleans.
+// and have something to show. `have` = { event, timer, media, weather } booleans.
 function extrasFor(cfg, have) {
   var out = []
   if (cfg.showEvent && have.event) out.push("event")
   if (cfg.showTimer && have.timer) out.push("timer")
-  if (cfg.showMusic && have.music) out.push("music")
+  if (cfg.showMedia && have.media) out.push("media")
   if (cfg.showWeather && have.weather) out.push("weather")
   return out
 }

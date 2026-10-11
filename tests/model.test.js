@@ -14,22 +14,23 @@ ok("coordinates kept", M.resolveSettings({ weatherLat: 30.27, weatherLon: "-97.7
 ok("bad or partial coordinates dropped", M.resolveSettings({ weatherLat: 95, weatherLon: 0 }).weatherLat === null && M.resolveSettings({ weatherLat: 10 }).weatherLon === null && M.resolveSettings({ weatherLat: "", weatherLon: "" }).weatherLat === null);
 ok("loopNext cycles", M.loopNext("None") === "Playlist" && M.loopNext("Playlist") === "Track" && M.loopNext("Track") === "None" && M.loopNext("x") === "None");
 ok("parseBars", M.parseBars("0;50;100;", 4).join() === "0,50,100,0" && M.parseBars("5;999;-3;x;", 3).join() === "5,100,0" && M.parseBars("", 2).join() === "0,0");
-ok("player glyphs", ["shuffle", "repeat", "repeat-once", "volume", "volume-off"].every(k => M.glyph(k).length === 2));
+ok("media glyphs", ["shuffle", "repeat", "repeat-once", "volume", "volume-off"].every(k => M.glyph(k).length === 2));
 // settings
 const s = M.resolveSettings({ clockMode: "bogus", rotateSeconds: 999, soonMinutes: 0, units: "x", timerPresets: "5, 15, nope, 0, 5000, 25", worldClocks: "Asia/Tokyo; ../etc, Europe/London" });
 ok("clock mode falls back", s.clockMode === "time");
-ok("extras default", M.resolveSettings({}).showEvent && M.resolveSettings({}).showTimer && !M.resolveSettings({}).showMusic && !M.resolveSettings({}).showWeather && M.resolveSettings({}).extrasShown === 4);
+ok("extras default", M.resolveSettings({}).showEvent && M.resolveSettings({}).showTimer && !M.resolveSettings({}).showMedia && !M.resolveSettings({}).showWeather && M.resolveSettings({}).extrasShown === 4);
 ok("toggles accept false/'false'", !M.resolveSettings({ showEvent: false }).showEvent && !M.resolveSettings({ showTimer: "false" }).showTimer);
 ok("legacy face clock", !M.resolveSettings({ face: "clock" }).showEvent && !M.resolveSettings({ face: "clock" }).showTimer);
-ok("legacy face rotate", M.resolveSettings({ face: "rotate" }).extrasShown === 1 && M.resolveSettings({ face: "rotate" }).showMusic);
+ok("old showMusic name still read", M.resolveSettings({ showMusic: true }).showMedia === true && M.resolveSettings({ showMusic: true, showMedia: false }).showMedia === false);
+ok("legacy face rotate", M.resolveSettings({ face: "rotate" }).extrasShown === 1 && M.resolveSettings({ face: "rotate" }).showMedia);
 ok("legacy rotateExtras", M.resolveSettings({ rotateExtras: true }).extrasShown === 1 && M.resolveSettings({ rotateExtras: false }).extrasShown === 4 && M.resolveSettings({ rotateExtras: true, extrasShown: 2 }).extrasShown === 2);
-ok("music options default off", M.resolveSettings({}).showMediaStatus === false && M.resolveSettings({}).miniVisualizer === false);
-ok("music options on", M.resolveSettings({ showMediaStatus: true, miniVisualizer: "true" }).showMediaStatus === true && M.resolveSettings({ miniVisualizer: "true" }).miniVisualizer === true && M.resolveSettings({ miniVisualizer: "no" }).miniVisualizer === false);
+ok("media options default off", M.resolveSettings({}).showMediaStatus === false && M.resolveSettings({}).miniVisualizer === false);
+ok("media options on", M.resolveSettings({ showMediaStatus: true, miniVisualizer: "true" }).showMediaStatus === true && M.resolveSettings({ miniVisualizer: "true" }).miniVisualizer === true && M.resolveSettings({ miniVisualizer: "no" }).miniVisualizer === false);
 ok("extra style", M.resolveSettings({}).extraStyle === "plain" && M.resolveSettings({ extraStyle: "border" }).extraStyle === "border" && M.resolveSettings({ extraStyle: "button" }).extraStyle === "button" && M.resolveSettings({ extraStyle: "neon" }).extraStyle === "plain");
 ok("extrasShown clamps", M.resolveSettings({ extrasShown: 9 }).extrasShown === 4 && M.resolveSettings({ extrasShown: -1 }).extrasShown === 0 && M.resolveSettings({ extrasShown: 0 }).extrasShown === 0);
-const ex = ["event", "timer", "music", "weather"];
+const ex = ["event", "timer", "media", "weather"];
 ok("page count", M.extraPageCount(4, 1) === 4 && M.extraPageCount(4, 2) === 2 && M.extraPageCount(3, 2) === 2 && M.extraPageCount(4, 4) === 1 && M.extraPageCount(2, 4) === 1 && M.extraPageCount(4, 0) === 0 && M.extraPageCount(0, 2) === 0);
-ok("pages", M.extraPage(ex, 1, 1).join() === "timer" && M.extraPage(ex, 2, 1).join() === "music,weather" && M.extraPage(ex, 2, 2).join() === "event,timer" && M.extraPage(ex, 3, 1).join() === "weather" && M.extraPage(ex, 0, 0).length === 0 && M.extraPage(ex, 4, 5).join() === ex.join());
+ok("pages", M.extraPage(ex, 1, 1).join() === "timer" && M.extraPage(ex, 2, 1).join() === "media,weather" && M.extraPage(ex, 2, 2).join() === "event,timer" && M.extraPage(ex, 3, 1).join() === "weather" && M.extraPage(ex, 0, 0).length === 0 && M.extraPage(ex, 4, 5).join() === ex.join());
 ok("legacy fills only unset", M.resolveSettings({ face: "clock", showEvent: true }).showEvent === true);
 ok("legacy ignored when clockMode set", M.resolveSettings({ face: "clock", clockMode: "both" }).showEvent);
 ok("numbers clamp", s.rotateSeconds === 60 && s.soonMinutes === 1);
@@ -88,9 +89,9 @@ ok("timeLabel", M.timeLabel(ev("x", 11, 9, 5, 10, 30)) === "09:05\u201310:30" &&
 ok("chip null", M.chip(null, now, s) === null);
 ok("ellipsize", M.ellipsize("A very long meeting title indeed", 10) === "A very lo…");
 ok("minutesLabel", M.minutesLabel(45) === "45m" && M.minutesLabel(90) === "1h30" && M.minutesLabel(120) === "2h" && M.minutesLabel(3000) === "2d");
-const all = { event: true, timer: true, music: true, weather: true };
-ok("extras order", M.extrasFor({ showEvent: true, showTimer: true, showMusic: true, showWeather: true }, all).join() === "event,timer,music,weather");
-ok("extras need toggle and data", M.extrasFor({ showEvent: true, showTimer: false, showMusic: true, showWeather: true }, { event: true, timer: true, music: false, weather: true }).join() === "event,weather");
+const all = { event: true, timer: true, media: true, weather: true };
+ok("extras order", M.extrasFor({ showEvent: true, showTimer: true, showMedia: true, showWeather: true }, all).join() === "event,timer,media,weather");
+ok("extras need toggle and data", M.extrasFor({ showEvent: true, showTimer: false, showMedia: true, showWeather: true }, { event: true, timer: true, media: false, weather: true }).join() === "event,weather");
 ok("no extras", M.extrasFor({}, all).length === 0);
 ok("clock parts", JSON.stringify(M.clockParts("time")) === '{"date":false,"time":true}' && M.clockParts("date").time === false && M.clockParts("both").date && M.clockParts("both").time);
 

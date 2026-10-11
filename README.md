@@ -1,7 +1,7 @@
 # Tidepool
 
 A calm clock for the [Omarchy](https://omarchy.org) bar that carries the next thing on your
-calendar, and opens into an agenda, timers, a music player, weather and world clocks.
+calendar, and opens into an agenda, timers, media, weather and world clocks.
 
 It lives *in* the bar, replacing the clock, and draws everything with the bar's own colors and your
 theme accent, so it blends in rather than sitting on top. The panel is a tab that grows out of the
@@ -33,7 +33,7 @@ Tidepool started as a bar-resident, theme-colored take on the
 | --- | --- |
 | **Agenda** | Month grid and the day's events, or the next 3 / 7 / 14 / 30 days grouped by day. Events with a call link (Meet, Zoom, Teams, Webex…) get a **Join** button; click an event for its organizer, attendees and description. Buttons at the bottom open the web pages that go with the accounts you've added, in your default browser (Google: Calendar, Tasks and Gmail; Outlook: Calendar, To Do and Mail; iCloud: Calendar, Reminders and Mail; Fastmail: Calendar and Mail; Nextcloud: Calendar and Tasks), plus a Mail button for your mail app. |
 | **Timers** | Presets, custom minutes and a pomodoro. They are real Omarchy reminders. |
-| **Player** | Any MPRIS player: art, seek bar, shuffle, repeat, volume, a player switcher and a live audio spectrum. |
+| **Media** | Whatever is playing, in any MPRIS app: art, seek bar, shuffle, repeat, volume, an app switcher and a live audio spectrum. |
 | **Weather** | Current conditions and a 5-day forecast. |
 | **Clocks** | World clocks. |
 
@@ -43,7 +43,7 @@ A separate **Settings** window (the button after the tabs) holds every option.
 
 - Omarchy with the shell (`omarchy-shell`) and its plugin system.
 - `python3` (standard library only).
-- Optional: `cava` for the player's spectrum, `secret-tool` (libsecret) to store CalDAV
+- Optional: `cava` for the media spectrum, `secret-tool` (libsecret) to store CalDAV
   passwords, `omarchy-reminder` for timers (ships with Omarchy).
 
 ## Install
@@ -104,8 +104,8 @@ Everything has a switch in the Settings window. They are also plain keys on the 
 | --- | --- | --- |
 | `clockMode` | `time` | `time`, `date` or `both` |
 | `format`, `dateFormat` | `HH:mm`, `ddd d MMM` | Qt date formats |
-| `showEvent` `showTimer` `showMusic` `showWeather` | `true` `true` `false` `false` | which extras appear |
-| `showMediaStatus`, `miniVisualizer` | `false` | play / pause icon on the music extra (it then stays while paused); a few live spectrum bars beside the track (needs `cava`) |
+| `showEvent` `showTimer` `showMedia` `showWeather` | `true` `true` `false` `false` | which extras appear |
+| `showMediaStatus`, `miniVisualizer` | `false` | play / pause icon on the media extra (it then stays while paused); a few live spectrum bars beside the track (needs `cava`) |
 | `extrasShown` | `4` | how many extras at once (0 hides them and the divider) |
 | `extraStyle` | `plain` | `plain`, `border` or `button` |
 | `rotateSeconds` | `6` | seconds per page when extras swap |
@@ -118,6 +118,8 @@ Everything has a switch in the Settings window. They are also plain keys on the 
 | `worldClocks` | | comma-separated IANA zones, up to 6 |
 | `timerPresets` | `5,15,25,45` | minutes |
 
+Older names still work: the `showMusic` option, the `player` and `music` tab names, and the `music` settings section.
+
 ## Controls
 
 | | |
@@ -127,13 +129,13 @@ Everything has a switch in the Settings window. They are also plain keys on the 
 | Middle click | open the timezone picker |
 | `Tab` / `Shift+Tab`, `1`–`5` | switch tabs |
 | `←` `→` · `[` `]` · `t` · `r` · `Esc` | agenda: day, month, today, sync; close |
-| Player: `space` `n` `p` `s` `r` `+` `-` | play/pause, next, previous, shuffle, repeat, volume |
+| Media tab: `space` `n` `p` `s` `r` `+` `-` | play/pause, next, previous, shuffle, repeat, volume |
 
 Shell commands:
 
 ```sh
 omarchy-shell jgarza.tidepool open|close|toggle|sync|cycleMode
-omarchy-shell jgarza.tidepool tab agenda|timers|player|weather|clocks
+omarchy-shell jgarza.tidepool tab agenda|timers|media|weather|clocks
 omarchy-shell jgarza.tidepool settings [section]
 omarchy-shell jgarza.tidepool timer <minutes> <label>
 ```
@@ -142,7 +144,7 @@ omarchy-shell jgarza.tidepool timer <minutes> <label>
 
 Tidepool talks to the network only for what you set up: your calendar URLs, and
 [Open-Meteo](https://open-meteo.com) (no key) for weather and for the city and time zone search.
-Nothing else leaves your machine. Timers, music and clocks are local.
+Nothing else leaves your machine. Timers, media and clocks are local.
 
 ## Development
 

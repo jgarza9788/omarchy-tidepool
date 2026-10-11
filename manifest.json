@@ -5,7 +5,7 @@
   "version": "0.2.0",
   "author": "jgarza",
   "license": "MIT",
-  "description": "A calm clock for the bar that grows into an agenda, timers, now-playing, weather and world clocks. Bar-resident, theme-colored successor to the Nookisle island. Calendars: ICS files, calendar folders, iCal links (Google secret address) and CalDAV.",
+  "description": "A calm clock for the bar that grows into an agenda, timers, media, weather and world clocks. Bar-resident, theme-colored successor to the Nookisle island. Calendars: ICS files, calendar folders, iCal links (Google secret address) and CalDAV.",
   "kinds": [
     "bar-widget"
   ],
@@ -14,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "Tidepool",
-    "description": "Clock with next-event chip, hover peek and an agenda/timers/player/weather panel.",
+    "description": "Clock with next-event chip, hover peek and an agenda/timers/media/weather panel.",
     "category": "Time",
     "allowMultiple": false,
     "defaultSection": "center",
@@ -22,7 +22,7 @@
       "clockMode": "time",
       "showEvent": true,
       "showTimer": true,
-      "showMusic": false,
+      "showMedia": false,
       "showWeather": false,
       "format": "HH:mm",
       "dateFormat": "ddd d MMM",
@@ -83,10 +83,10 @@
         "defaultValue": true
       },
       {
-        "key": "showMusic",
+        "key": "showMedia",
         "type": "boolean",
-        "label": "Music",
-        "description": "Show the playing track after the divider.",
+        "label": "Media",
+        "description": "Show what is playing after the divider.",
         "defaultValue": false
       },
       {
@@ -100,14 +100,14 @@
         "key": "showMediaStatus",
         "type": "boolean",
         "label": "Play / pause status",
-        "description": "A play or pause icon before the track; the music extra then stays while paused.",
+        "description": "A play or pause icon before the title; the media extra then stays while paused.",
         "defaultValue": false
       },
       {
         "key": "miniVisualizer",
         "type": "boolean",
         "label": "Mini visualizer",
-        "description": "A few live spectrum bars next to the track while it plays (runs cava).",
+        "description": "A few live spectrum bars next to the title while it plays (runs cava).",
         "defaultValue": false
       },
       {
