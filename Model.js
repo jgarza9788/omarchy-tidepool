@@ -400,8 +400,9 @@ function validateSource(src) {
 }
 
 // The web pages that go with a calendar account, for the Agenda footer:
-// [{ name, url }]. Google gives Calendar and Tasks, Outlook Calendar and To Do,
-// iCloud Calendar and Reminders, Nextcloud Calendar and Tasks; an unknown server
+// [{ name, url }]. Google gives Calendar, Tasks and Gmail, Outlook Calendar,
+// To Do and Mail, iCloud Calendar, Reminders and Mail, Fastmail Calendar and
+// Mail, Nextcloud Calendar and Tasks; an unknown server
 // just gets its own front page. Local files and LAN servers have none.
 // Never includes secrets: a Google feed's private key stays out of the links;
 // only the account's address is used, to pick the right signed-in account.
@@ -415,15 +416,19 @@ function webLinks(src) {
     if (who.indexOf("@") < 0 || who.indexOf("group.calendar.google.com") > 0 || /\s/.test(who)) who = ""
     var q = who ? "?authuser=" + encodeURIComponent(who) : ""
     return [{ name: "Google Calendar", url: "https://calendar.google.com/calendar/u/0/r" + q },
-            { name: "Google Tasks", url: "https://calendar.google.com/calendar/u/0/r/tasks" + q }]
+            { name: "Google Tasks", url: "https://calendar.google.com/calendar/u/0/r/tasks" + q },
+            { name: "Gmail", url: "https://mail.google.com/mail/u/0/" + q }]
   }
   if (/(^|\.)(outlook\.office365\.com|outlook\.live\.com|outlook\.office\.com)$/.test(host))
     return [{ name: "Outlook Calendar", url: "https://outlook.office.com/calendar" },
-            { name: "Microsoft To Do", url: "https://to-do.office.com/tasks/" }]
+            { name: "Microsoft To Do", url: "https://to-do.office.com/tasks/" },
+            { name: "Outlook Mail", url: "https://outlook.office.com/mail/" }]
   if (/(^|\.)icloud\.com$/.test(host))
     return [{ name: "iCloud Calendar", url: "https://www.icloud.com/calendar/" },
-            { name: "iCloud Reminders", url: "https://www.icloud.com/reminders/" }]
-  if (/(^|\.)fastmail\.com$/.test(host)) return [{ name: "Fastmail Calendar", url: "https://app.fastmail.com/calendar/" }]
+            { name: "iCloud Reminders", url: "https://www.icloud.com/reminders/" },
+            { name: "iCloud Mail", url: "https://www.icloud.com/mail/" }]
+  if (/(^|\.)fastmail\.com$/.test(host)) return [{ name: "Fastmail Calendar", url: "https://app.fastmail.com/calendar/" },
+                                                        { name: "Fastmail", url: "https://app.fastmail.com/mail/" }]
   if (/\/remote\.php\/dav\//.test(url))
     return [{ name: "Nextcloud Calendar", url: "https://" + host + "/apps/calendar" },
             { name: "Nextcloud Tasks", url: "https://" + host + "/apps/tasks" }]

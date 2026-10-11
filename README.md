@@ -31,7 +31,7 @@ Tidepool started as a bar-resident, theme-colored take on the
 
 | Tab | |
 | --- | --- |
-| **Agenda** | Month grid and the day's events, or the next 3 / 7 / 14 / 30 days grouped by day. Events with a call link (Meet, Zoom, Teams, Webex…) get a **Join** button; click an event for its organizer, attendees and description. Buttons at the bottom open the web pages that go with the accounts you've added, in your default browser (Google: Calendar and Tasks; Outlook: Calendar and To Do; iCloud: Calendar and Reminders; Nextcloud: Calendar and Tasks; Fastmail: Calendar), plus a Mail button for your mail app. |
+| **Agenda** | Month grid and the day's events, or the next 3 / 7 / 14 / 30 days grouped by day. Events with a call link (Meet, Zoom, Teams, Webex…) get a **Join** button; click an event for its organizer, attendees and description. Buttons at the bottom open the web pages that go with the accounts you've added, in your default browser (Google: Calendar, Tasks and Gmail; Outlook: Calendar, To Do and Mail; iCloud: Calendar, Reminders and Mail; Fastmail: Calendar and Mail; Nextcloud: Calendar and Tasks), plus a Mail button for your mail app. |
 | **Timers** | Presets, custom minutes and a pomodoro. They are real Omarchy reminders. |
 | **Player** | Any MPRIS player: art, seek bar, shuffle, repeat, volume, a player switcher and a live audio spectrum. |
 | **Weather** | Current conditions and a 5-day forecast. |

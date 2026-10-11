@@ -116,18 +116,19 @@ ok("next color name", M.nextColorName([{ colorName: "accent" }]) === "blue");
 
 const gfeed = { kind: "ics-url", url: "https://calendar.google.com/calendar/ical/jo%40gmail.com/private-abc123/basic.ics" };
 const names = (o) => M.webLinks(o).map(l => l.name).join();
-ok("google: calendar and tasks", names(gfeed) === "Google Calendar,Google Tasks");
+ok("google: calendar, tasks and gmail", names(gfeed) === "Google Calendar,Google Tasks,Gmail");
 ok("google picks the signed-in account", M.webLinks(gfeed).every(l => l.url.indexOf("authuser=jo%40gmail.com") > 0));
+ok("gmail link is for the signed-in account", M.webLinks(gfeed)[2].url === "https://mail.google.com/mail/u/0/?authuser=jo%40gmail.com");
 ok("google links keep the key out", M.webLinks(gfeed).every(l => !/private|abc123/.test(l.url)));
 ok("google shared calendar has no account", M.webLinks({ kind: "ics-url", url: "https://calendar.google.com/calendar/ical/abc123%40group.calendar.google.com/public/basic.ics" })[0].url === "https://calendar.google.com/calendar/u/0/r");
-ok("outlook", names({ kind: "ics-url", url: "https://outlook.office365.com/owa/calendar/x/y/reachcalendar.ics" }) === "Outlook Calendar,Microsoft To Do");
-ok("icloud", names({ kind: "caldav", url: "https://p12-caldav.icloud.com/123/calendars/" }) === "iCloud Calendar,iCloud Reminders");
-ok("fastmail", names({ kind: "caldav", url: "https://caldav.fastmail.com/dav/" }) === "Fastmail Calendar");
+ok("outlook", names({ kind: "ics-url", url: "https://outlook.office365.com/owa/calendar/x/y/reachcalendar.ics" }) === "Outlook Calendar,Microsoft To Do,Outlook Mail");
+ok("icloud", names({ kind: "caldav", url: "https://p12-caldav.icloud.com/123/calendars/" }) === "iCloud Calendar,iCloud Reminders,iCloud Mail");
+ok("fastmail", names({ kind: "caldav", url: "https://caldav.fastmail.com/dav/" }) === "Fastmail Calendar,Fastmail");
 ok("nextcloud", names({ kind: "caldav", url: "https://cloud.example.com/remote.php/dav/calendars/me/" }) === "Nextcloud Calendar,Nextcloud Tasks" && M.webLinks({ kind: "caldav", url: "https://cloud.example.com/remote.php/dav/calendars/me/" })[1].url === "https://cloud.example.com/apps/tasks");
 ok("generic server", names({ kind: "caldav", url: "https://dav.example.org/cal/" }) === "dav.example.org" && M.webLinks({ kind: "caldav", url: "https://dav.example.org/cal/" })[0].url === "https://dav.example.org/");
 ok("no links for files or lan", M.webLinks({ kind: "file", path: "/a.ics" }).length === 0 && M.webLinks({ kind: "vdir", path: "/d" }).length === 0 && M.webLinks({ kind: "caldav", url: "http://192.168.1.2/dav", allowLocalNetwork: true }).length === 0);
 const both = M.webLinksFor([gfeed, Object.assign({}, gfeed), { kind: "caldav", url: "https://p1-caldav.icloud.com/x/", enabled: false }, { kind: "ics-url", url: "https://outlook.live.com/owa/calendar/a/b/c.ics" }]);
-ok("links dedupe, skip disabled, keep order", both.map(l => l.name).join() === "Google Calendar,Google Tasks,Outlook Calendar,Microsoft To Do");
+ok("links dedupe, skip disabled, keep order", both.map(l => l.name).join() === "Google Calendar,Google Tasks,Gmail,Outlook Calendar,Microsoft To Do,Outlook Mail");
 // timers
 const rem = JSON.stringify({ reminders: [
   { unit: "omarchy-reminder-25m-1", message: " Focus\n", minutes: 25, at: 2000 },
