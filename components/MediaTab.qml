@@ -288,7 +288,8 @@ Item {
     width: pick.implicitWidth + Style.space(8)
     height: pick.implicitHeight + Style.space(6)
     radius: Style.space(8)
-    color: Qt.alpha(Color.popups.background, 0.78)
+    // The card's own colour (the theme's bar colour lifted a little), translucent.
+    color: Qt.alpha(Qt.tint(Color.bar.background, Qt.alpha(Color.bar.text, 0.07)), 0.78)
     border.width: 1
     border.color: Qt.alpha(Color.popups.text, 0.12)
 
@@ -296,7 +297,7 @@ Item {
       id: pick
       anchors.centerIn: parent
       spacing: Style.space(2)
-      ActionButton { icon: "left"; primary: true; tooltip: "Previous visualizer"; onClicked: tab.stepVisualizer(-1) }
+      ActionButton { icon: "left"; tooltip: "Previous visualizer"; onClicked: tab.stepVisualizer(-1) }
       PText {
         anchors.verticalCenter: parent.verticalCenter
         width: Style.space(58)
@@ -306,7 +307,7 @@ Item {
         font.pixelSize: Style.font.bodySmall
         elide: Text.ElideNone
       }
-      ActionButton { icon: "right"; primary: true; tooltip: "Next visualizer"; onClicked: tab.stepVisualizer(1) }
+      ActionButton { icon: "right"; tooltip: "Next visualizer"; onClicked: tab.stepVisualizer(1) }
     }
   }
 
