@@ -6,6 +6,7 @@ import os
 import sys
 import tempfile
 import threading
+import time
 import unittest
 
 sys.dont_write_bytecode = True
@@ -356,6 +357,64 @@ class HelperTest(unittest.TestCase):
         iana = h.ics.parse_events(mk("America/New_York"), self.today, self.today)[0]["start"]
         self.assertEqual(win, iana)                       # same instant, whatever zone the test runs in
         self.assertEqual(win.utcoffset() if win.tzinfo else None, None)   # still a naive local time
+
+    # ── repeating events keep their own clock across daylight-saving changes ──
+    def _in_zone(self, tz, fn):
+        old = os.environ.get("TZ")
+        os.environ["TZ"] = tz; time.tzset()
+        try:
+            return fn()
+        finally:
+            if old is None: os.environ.pop("TZ", None)
+            else: os.environ["TZ"] = old
+            time.tzset()
+
+    def _weekly(self, tz, extra="", after="", rr="FREQ=WEEKLY", start="20260105T090000", end="20260105T100000", frm=(2026, 1, 1), to=(2026, 12, 31)):
+        text = ("BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:u\r\nSUMMARY:M\r\nDTSTART;TZID=%s:%s\r\nDTEND;TZID=%s:%s\r\nRRULE:%s\r\n%sEND:VEVENT\r\n%sEND:VCALENDAR\r\n"
+                % (tz, start, tz, end, rr, extra, after))
+        return sorted(h.ics.parse_events(text, dt.date(*frm), dt.date(*to)), key=lambda e: e["start"])
+
+    def test_repeating_event_in_another_zone_is_right_all_year(self):
+        from zoneinfo import ZoneInfo
+        for you, meeting in (("America/New_York", "Europe/London"), ("America/Phoenix", "America/New_York"),
+                             ("Australia/Sydney", "Europe/London"), ("Europe/London", "America/New_York")):
+            def check():
+                evs = self._weekly(meeting)
+                self.assertEqual(len(evs), 52)
+                for e in evs:
+                    want = dt.datetime.combine(e["start"].date(), dt.time(9)).replace(tzinfo=ZoneInfo(meeting))
+                    # the occurrence is 9:00 on the meeting's own clock, whichever local day it lands on
+                    got = e["start"].astimezone() if e["start"].tzinfo else e["start"].replace(tzinfo=dt.datetime.now().astimezone().tzinfo)
+                    true_local = want.astimezone().replace(tzinfo=None)
+                    wall_day = [d for d in (e["start"].date() - dt.timedelta(days=1), e["start"].date(), e["start"].date() + dt.timedelta(days=1))
+                                if dt.datetime.combine(d, dt.time(9)).replace(tzinfo=ZoneInfo(meeting)).astimezone().replace(tzinfo=None) == e["start"]]
+                    self.assertTrue(wall_day, "%s -> %s: %s is not 9:00 in %s" % (meeting, you, e["start"], meeting))
+            self._in_zone(you, check)
+
+    def test_the_march_gap_between_us_and_uk_clock_changes(self):
+        got = self._in_zone("America/New_York", lambda: [e["start"].strftime("%m-%d %H:%M") for e in self._weekly("Europe/London", frm=(2026, 3, 1), to=(2026, 4, 5))])
+        # 9:00 London is 04:00 New York, except 3 weeks when only the US has moved its clocks
+        self.assertEqual(got, ["03-02 04:00", "03-09 05:00", "03-16 05:00", "03-23 05:00", "03-30 04:00"])
+
+    def test_zoned_repeats_respect_exdate_override_until_and_count(self):
+        def check():
+            self.assertEqual([e["start"].strftime("%m-%d") for e in self._weekly("Europe/London", "EXDATE;TZID=Europe/London:20260316T090000\r\n", frm=(2026, 3, 9), to=(2026, 3, 23))], ["03-09", "03-23"])
+            moved = ("BEGIN:VEVENT\r\nUID:u\r\nSUMMARY:Moved\r\nRECURRENCE-ID;TZID=Europe/London:20260316T090000\r\n"
+                     "DTSTART;TZID=Europe/London:20260316T150000\r\nDTEND;TZID=Europe/London:20260316T160000\r\nEND:VEVENT\r\n")
+            titles = [(e["title"], e["start"].strftime("%m-%d")) for e in self._weekly("Europe/London", after=moved, frm=(2026, 3, 9), to=(2026, 3, 23))]
+            self.assertEqual(titles, [("M", "03-09"), ("Moved", "03-16"), ("M", "03-23")])
+            self.assertEqual(self._weekly("Europe/London", rr="FREQ=WEEKLY;COUNT=3")[-1]["start"].strftime("%m-%d"), "01-19")
+            self.assertEqual(self._weekly("Europe/London", rr="FREQ=WEEKLY;UNTIL=20260316T090000Z")[-1]["start"].strftime("%m-%d"), "03-16")
+        self._in_zone("America/New_York", check)
+
+    def test_a_series_written_in_utc_follows_your_clocks(self):
+        text = ("BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:z\r\nSUMMARY:Z\r\nDTSTART:20260105T140000Z\r\nDTEND:20260105T150000Z\r\nRRULE:FREQ=WEEKLY\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n")
+        hours = self._in_zone("America/New_York", lambda: sorted({e["start"].strftime("%H:%M") for e in h.ics.parse_events(text, dt.date(2026, 3, 1), dt.date(2026, 3, 31))}))
+        self.assertEqual(hours, ["09:00", "10:00"])      # 14:00Z is 09:00 in winter and 10:00 once the US is on DST
+
+    def test_a_late_evening_event_lands_on_the_right_local_day(self):
+        evs = self._in_zone("America/New_York", lambda: self._weekly("Australia/Sydney", start="20260105T233000", end="20260106T003000", frm=(2026, 1, 1), to=(2026, 1, 20)))
+        self.assertEqual([e["start"].strftime("%m-%d %H:%M") for e in evs][:2], ["01-05 07:30", "01-12 07:30"])
 
     def test_zones(self):
         z = h.zones({"zones": ["UTC", "Asia/Tokyo", "Not/AZone"]})["zones"]

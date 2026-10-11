@@ -114,6 +114,33 @@ def parse_dt(value, params):
     return base, False
 
 
+def zone_of(value, params):
+    """The time zone a date-time is written in: UTC for a trailing Z, the TZID's
+    zone when it is known (Windows names included), else None (floating time or
+    an all-day date, which are already in local time)."""
+    value = value.strip()
+    if params.get("VALUE") == "DATE" or re.fullmatch(r"\d{8}", value):
+        return None
+    if value.endswith("Z"):
+        return dt.timezone.utc
+    tzid = (params.get("TZID") or "").strip('"')
+    for name in (tzid, WINDOWS_ZONES.get(tzid, "")):
+        if name:
+            try:
+                return ZoneInfo(name)
+            except Exception:
+                continue
+    return None
+
+
+def wall_time(value):
+    """The clock reading in a date-time string, with no zone applied."""
+    m = re.fullmatch(r"(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z?", value.strip())
+    if not m:
+        raise ValueError("bad date-time: " + value)
+    return dt.datetime(*(int(m.group(i)) for i in range(1, 7)))
+
+
 def parse_duration(v):
     m = re.fullmatch(r"([+-])?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?", v.strip())
     if not m:
@@ -145,7 +172,7 @@ def _int(value, default, lo=None):
     return max(lo, n) if lo is not None else n
 
 
-def expand(start, rule, window_start, window_end, exdates):
+def expand(start, rule, window_start, window_end, exdates, zone=None):
     """Yield occurrence starts (same type as `start`) intersecting the window."""
     freq = rule.get("FREQ")
     if freq not in ("DAILY", "WEEKLY", "MONTHLY", "YEARLY"):
@@ -157,6 +184,10 @@ def expand(start, rule, window_start, window_end, exdates):
     if rule.get("UNTIL"):
         try:
             u, _ = parse_dt(rule["UNTIL"], {})
+            raw = rule["UNTIL"].strip()
+            if zone is not None and raw.endswith("Z") and isinstance(u, dt.datetime):
+                # the series runs on the event's own clock, so cut it off on that clock
+                u = wall_time(raw).replace(tzinfo=dt.timezone.utc).astimezone(zone).replace(tzinfo=None)
             until = u
         except ValueError:
             until = None
@@ -329,6 +360,9 @@ def parse_events(text, window_start, window_end):
                     ev["cancelled"] = True
                 elif name == "DTSTART":
                     ev["start"], ev["allDay"] = parse_dt(value, params)
+                    ev["zone"] = zone_of(value, params)
+                    if ev["zone"] is not None:
+                        ev["wall"] = wall_time(value)
                 elif name == "DTEND":
                     ev["end"], _ = parse_dt(value, params)
                 elif name == "DURATION":
@@ -379,9 +413,20 @@ def parse_events(text, window_start, window_end):
                     "attendees": (ev.get("attendees") or [])[:8],
                     "attendeeCount": len(ev.get("attendees") or [])})
 
+    one_day = dt.timedelta(days=1)
     for ev in masters:
         try:
-            if ev["rrule"]:
+            if ev["rrule"] and ev.get("zone") is not None and not ev["allDay"]:
+                # A repeating event keeps its own clock: 9:00 London stays 9:00 London
+                # when your clocks and London's change on different days. Repeat it in
+                # its zone, then convert each occurrence to local time.
+                zone = ev["zone"]
+                for wall in expand(ev["wall"], ev["rrule"], window_start - one_day, window_end + one_day, set(), zone):
+                    local = to_local(wall.replace(tzinfo=zone))
+                    if _first_of(local) in ev["exdates"] or (ev.get("uid"), _first_of(local)) in overrides:
+                        continue
+                    emit(ev, local)
+            elif ev["rrule"]:
                 for occ in expand(ev["start"], ev["rrule"], window_start, window_end, ev["exdates"]):
                     ov = overrides.get((ev.get("uid"), _first_of(occ)))
                     if ov:
