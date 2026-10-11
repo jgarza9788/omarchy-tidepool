@@ -19,7 +19,7 @@ function glyph(name) { return GLYPH[name] ? String.fromCodePoint(GLYPH[name]) : 
 var EXTRA_STYLES = ["plain", "border", "button"]
 var CLOCK_MODES = ["time", "date", "both"]
 var DEFAULTS = {
-  clockMode: "time", showEvent: true, showTimer: true, showMusic: false, showWeather: false, extrasShown: 4, extraStyle: "plain",
+  clockMode: "time", showEvent: true, showTimer: true, showMusic: false, showWeather: false, extrasShown: 4, extraStyle: "plain", showMediaStatus: false, miniVisualizer: false,
   format: "HH:mm", dateFormat: "ddd d MMM", peekOnHover: true,
   rotateSeconds: 6, soonMinutes: 15, notifyMinutes: 5, chipMaxChars: 22, chipHorizonHours: 12, tideLine: true, weatherCity: "", weatherLat: null, weatherLon: null, units: "metric",
   worldClocks: "", timerPresets: "5,15,25,45", weekStart: "monday"
@@ -55,6 +55,8 @@ function resolveSettings(raw) {
   var flags = ["showEvent", "showTimer", "showMusic", "showWeather"]
   for (var f = 0; f < flags.length; ++f) out[flags[f]] = out[flags[f]] !== false && out[flags[f]] !== "false"
   out.peekOnHover = out.peekOnHover !== false && out.peekOnHover !== "false"
+  out.showMediaStatus = out.showMediaStatus === true || out.showMediaStatus === "true"
+  out.miniVisualizer = out.miniVisualizer === true || out.miniVisualizer === "true"
   if (EXTRA_STYLES.indexOf(out.extraStyle) < 0) out.extraStyle = DEFAULTS.extraStyle
   out.extrasShown = clamp(out.extrasShown, 0, 4, DEFAULTS.extrasShown)
   out.rotateSeconds = clamp(out.rotateSeconds, 2, 60, DEFAULTS.rotateSeconds)

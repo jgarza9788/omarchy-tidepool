@@ -42,12 +42,12 @@ BarWidget {
 
   // Extras after the divider: each has its own switch in the settings.
   readonly property var extras: Model.extrasFor(cfg, {
-    event: !!chip, timer: !!activeTimer, music: store.playing, weather: weatherText !== ""
+    event: !!chip, timer: !!activeTimer, music: store.hasPlayer && (store.playing || cfg.showMediaStatus), weather: weatherText !== ""
   })
   function extraText(name) {
     if (name === "event") return chip ? chip.text : ""
     if (name === "timer") return activeTimer ? Model.glyph("timer") + " " + Model.remainingLabel(activeTimer.endsAt - store.nowMs) : ""
-    if (name === "music") return Model.glyph("music") + " " + Model.ellipsize(store.playerLine, 28)
+    if (name === "music") return Model.glyph(cfg.showMediaStatus ? (store.playing ? "play" : "pause") : "music") + " " + Model.ellipsize(store.playerLine, 28)
     if (name === "weather") return weatherText
     return ""
   }
@@ -326,8 +326,8 @@ BarWidget {
             Rectangle {
               id: box
               anchors.verticalCenter: parent.verticalCenter
-              implicitWidth: label.implicitWidth + (entry.boxed ? Style.space(14) : 0)
-              implicitHeight: label.implicitHeight + (entry.boxed ? Style.space(6) : 0)
+              implicitWidth: content.implicitWidth + (entry.boxed ? Style.space(14) : 0)
+              implicitHeight: content.implicitHeight + (entry.boxed ? Style.space(6) : 0)
               width: implicitWidth
               height: implicitHeight
               radius: Style.space(7)
@@ -343,16 +343,37 @@ BarWidget {
               Component.onCompleted: root.registerExtra(entry.modelData, box)
               Component.onDestruction: root.unregisterExtra(entry.modelData, box)
 
-              Text {
-                id: label
+              Row {
+                id: content
                 anchors.centerIn: parent
-                text: root.extraText(entry.modelData)
-                color: root.extraColor(entry.modelData)
-                font.family: root.fontFamily
-                font.pixelSize: button.fontSize
-                font.bold: root.extraAccent(entry.modelData) && entry.modelData === "event"
-                renderType: Text.NativeRendering
-                Behavior on color { ColorAnimation { duration: 200 } }
+                spacing: Style.space(5)
+
+                // A few spectrum bars beside the track while it plays.
+                Visualizer {
+                  id: miniViz
+                  visible: entry.modelData === "music" && root.cfg.miniVisualizer && store.playing && available
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: visible ? Style.space(22) : 0
+                  height: Style.space(12)
+                  implicitHeight: height
+                  active: entry.modelData === "music" && root.cfg.miniVisualizer && store.playing
+                  config: "cava-mini.conf"
+                  bars: 8
+                  gap: Style.space(1)
+                  minH: Style.space(2)
+                }
+
+                Text {
+                  id: label
+                  anchors.verticalCenter: parent.verticalCenter
+                  text: root.extraText(entry.modelData)
+                  color: root.extraColor(entry.modelData)
+                  font.family: root.fontFamily
+                  font.pixelSize: button.fontSize
+                  font.bold: root.extraAccent(entry.modelData) && entry.modelData === "event"
+                  renderType: Text.NativeRendering
+                  Behavior on color { ColorAnimation { duration: 200 } }
+                }
               }
 
               // Which extra the pointer is over (the press itself is handled by

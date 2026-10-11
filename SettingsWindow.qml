@@ -196,7 +196,7 @@ FloatingWindow {
           }
           SettingRow {
             label: "Music"
-            description: "Artist and title while something is playing."
+            description: "Artist and title of what is playing."
             Switch { checked: win.cfg.showMusic; onToggled: win.set({ showMusic: !win.cfg.showMusic }) }
           }
           SettingRow {
@@ -204,6 +204,18 @@ FloatingWindow {
             description: "Icon and temperature. Needs a city under Weather."
             Switch { checked: win.cfg.showWeather; onToggled: win.set({ showWeather: !win.cfg.showWeather }) }
           }
+          PText { text: "Music extra"; font.bold: true; tone: Color.accent; topPadding: Style.space(16); bottomPadding: Style.space(2); elide: Text.ElideNone }
+          SettingRow {
+            label: "Show play / pause status"
+            description: "A play or pause icon before the track. The extra then stays on the bar while the track is paused; without it, it only shows while playing."
+            Switch { checked: win.cfg.showMediaStatus; onToggled: win.set({ showMediaStatus: !win.cfg.showMediaStatus }) }
+          }
+          SettingRow {
+            label: "Mini visualizer"
+            description: "A few live spectrum bars next to the track while it plays. Runs cava in the background, only while music is playing."
+            Switch { checked: win.cfg.miniVisualizer; onToggled: win.set({ miniVisualizer: !win.cfg.miniVisualizer }) }
+          }
+
           PText { text: "How they show"; font.bold: true; tone: Color.accent; topPadding: Style.space(16); bottomPadding: Style.space(2); elide: Text.ElideNone }
           SettingRow {
             label: "Extras shown at once"

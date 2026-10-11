@@ -39,7 +39,9 @@
       "timerPresets": "5,15,25,45",
       "extrasShown": 4,
       "extraStyle": "plain",
-      "notifyMinutes": 5
+      "notifyMinutes": 5,
+      "showMediaStatus": false,
+      "miniVisualizer": false
     },
     "schema": [
       {
@@ -92,6 +94,20 @@
         "type": "boolean",
         "label": "Weather",
         "description": "Show the temperature after the divider (needs a city).",
+        "defaultValue": false
+      },
+      {
+        "key": "showMediaStatus",
+        "type": "boolean",
+        "label": "Play / pause status",
+        "description": "A play or pause icon before the track; the music extra then stays while paused.",
+        "defaultValue": false
+      },
+      {
+        "key": "miniVisualizer",
+        "type": "boolean",
+        "label": "Mini visualizer",
+        "description": "A few live spectrum bars next to the track while it plays (runs cava).",
         "defaultValue": false
       },
       {

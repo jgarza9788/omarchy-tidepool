@@ -23,6 +23,8 @@ ok("toggles accept false/'false'", !M.resolveSettings({ showEvent: false }).show
 ok("legacy face clock", !M.resolveSettings({ face: "clock" }).showEvent && !M.resolveSettings({ face: "clock" }).showTimer);
 ok("legacy face rotate", M.resolveSettings({ face: "rotate" }).extrasShown === 1 && M.resolveSettings({ face: "rotate" }).showMusic);
 ok("legacy rotateExtras", M.resolveSettings({ rotateExtras: true }).extrasShown === 1 && M.resolveSettings({ rotateExtras: false }).extrasShown === 4 && M.resolveSettings({ rotateExtras: true, extrasShown: 2 }).extrasShown === 2);
+ok("music options default off", M.resolveSettings({}).showMediaStatus === false && M.resolveSettings({}).miniVisualizer === false);
+ok("music options on", M.resolveSettings({ showMediaStatus: true, miniVisualizer: "true" }).showMediaStatus === true && M.resolveSettings({ miniVisualizer: "true" }).miniVisualizer === true && M.resolveSettings({ miniVisualizer: "no" }).miniVisualizer === false);
 ok("extra style", M.resolveSettings({}).extraStyle === "plain" && M.resolveSettings({ extraStyle: "border" }).extraStyle === "border" && M.resolveSettings({ extraStyle: "button" }).extraStyle === "button" && M.resolveSettings({ extraStyle: "neon" }).extraStyle === "plain");
 ok("extrasShown clamps", M.resolveSettings({ extrasShown: 9 }).extrasShown === 4 && M.resolveSettings({ extrasShown: -1 }).extrasShown === 0 && M.resolveSettings({ extrasShown: 0 }).extrasShown === 0);
 const ex = ["event", "timer", "music", "weather"];

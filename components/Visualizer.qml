@@ -11,10 +11,12 @@ Item {
   id: viz
 
   property bool active: false
+  property string config: "cava.conf"          // a file in bin/
+  property real gap: Style.space(3)
+  property real minH: Style.space(3)
   property int bars: 40
   property var values: []
   property bool available: true
-  readonly property real minH: Style.space(3)
 
   visible: available
   implicitHeight: Style.space(110)
@@ -23,7 +25,7 @@ Item {
 
   Process {
     id: cava
-    command: ["cava", "-p", Qt.resolvedUrl("../bin/cava.conf").toString().replace(/^file:\/\//, "")]
+    command: ["cava", "-p", Qt.resolvedUrl("../bin/" + viz.config).toString().replace(/^file:\/\//, "")]
     running: viz.active
     stdout: SplitParser {
       onRead: function (line) { viz.values = Model.parseBars(line, viz.bars) }
@@ -33,20 +35,20 @@ Item {
 
   Row {
     anchors.fill: parent
-    spacing: Style.space(3)
+    spacing: viz.gap
     Repeater {
       model: viz.bars
       Item {
         required property int index
         readonly property real v: viz.values.length > index ? viz.values[index] / 100 : 0
-        width: (viz.width - (viz.bars - 1) * Style.space(3)) / viz.bars
+        width: (viz.width - (viz.bars - 1) * viz.gap) / viz.bars
         height: viz.height
 
         Rectangle {
           anchors.bottom: parent.bottom
           width: parent.width
           height: Math.max(viz.minH, parent.height * parent.v)
-          radius: Math.min(width / 2, Style.space(3))
+          radius: Math.min(width / 2, Math.max(1, viz.gap))
           gradient: Gradient {
             GradientStop { position: 0.0; color: Color.accent }
             GradientStop { position: 1.0; color: Qt.alpha(Color.accent, 0.25) }

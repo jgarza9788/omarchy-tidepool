@@ -105,6 +105,7 @@ Everything has a switch in the Settings window. They are also plain keys on the 
 | `clockMode` | `time` | `time`, `date` or `both` |
 | `format`, `dateFormat` | `HH:mm`, `ddd d MMM` | Qt date formats |
 | `showEvent` `showTimer` `showMusic` `showWeather` | `true` `true` `false` `false` | which extras appear |
+| `showMediaStatus`, `miniVisualizer` | `false` | play / pause icon on the music extra (it then stays while paused); a few live spectrum bars beside the track (needs `cava`) |
 | `extrasShown` | `4` | how many extras at once (0 hides them and the divider) |
 | `extraStyle` | `plain` | `plain`, `border` or `button` |
 | `rotateSeconds` | `6` | seconds per page when extras swap |
