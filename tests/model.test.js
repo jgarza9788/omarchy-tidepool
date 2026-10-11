@@ -114,14 +114,20 @@ ok("title falls back to host", M.sourceTitle({ kind: "ics-url", url: "https://ca
 ok("error text", M.errorText("auth-error").length > 0 && M.errorText("http-404") === "Server said 404" && M.errorText("weird") === "Sync failed" && M.errorText("") === "");
 ok("next color name", M.nextColorName([{ colorName: "accent" }]) === "blue");
 
-const wc = (o) => M.webCalendar(o);
-ok("google feed", wc({ kind: "ics-url", url: "https://calendar.google.com/calendar/ical/jo%40gmail.com/private-abc123/basic.ics" }).url === "https://calendar.google.com/calendar/u/0/r?authuser=jo%40gmail.com");
-ok("google link keeps the key out", !/private/.test(wc({ kind: "ics-url", url: "https://calendar.google.com/calendar/ical/jo%40gmail.com/private-abc123/basic.ics" }).url));
-ok("google shared calendar has no account", wc({ kind: "ics-url", url: "https://calendar.google.com/calendar/ical/abc123%40group.calendar.google.com/public/basic.ics" }).url === "https://calendar.google.com/calendar/u/0/r");
-ok("providers", wc({ kind: "ics-url", url: "https://outlook.office365.com/owa/calendar/x/y/reachcalendar.ics" }).name === "Outlook" && wc({ kind: "caldav", url: "https://p12-caldav.icloud.com/123/calendars/" }).name === "iCloud" && wc({ kind: "caldav", url: "https://caldav.fastmail.com/dav/" }).name === "Fastmail");
-ok("nextcloud", wc({ kind: "caldav", url: "https://cloud.example.com/remote.php/dav/calendars/me/" }).url === "https://cloud.example.com/apps/calendar");
-ok("generic server", wc({ kind: "caldav", url: "https://dav.example.org/cal/" }).url === "https://dav.example.org/");
-ok("no web calendar for files or lan", wc({ kind: "file", path: "/a.ics" }) === null && wc({ kind: "vdir", path: "/d" }) === null && wc({ kind: "caldav", url: "http://192.168.1.2/dav", allowLocalNetwork: true }) === null);
+const gfeed = { kind: "ics-url", url: "https://calendar.google.com/calendar/ical/jo%40gmail.com/private-abc123/basic.ics" };
+const names = (o) => M.webLinks(o).map(l => l.name).join();
+ok("google: calendar and tasks", names(gfeed) === "Google Calendar,Google Tasks");
+ok("google picks the signed-in account", M.webLinks(gfeed).every(l => l.url.indexOf("authuser=jo%40gmail.com") > 0));
+ok("google links keep the key out", M.webLinks(gfeed).every(l => !/private|abc123/.test(l.url)));
+ok("google shared calendar has no account", M.webLinks({ kind: "ics-url", url: "https://calendar.google.com/calendar/ical/abc123%40group.calendar.google.com/public/basic.ics" })[0].url === "https://calendar.google.com/calendar/u/0/r");
+ok("outlook", names({ kind: "ics-url", url: "https://outlook.office365.com/owa/calendar/x/y/reachcalendar.ics" }) === "Outlook Calendar,Microsoft To Do");
+ok("icloud", names({ kind: "caldav", url: "https://p12-caldav.icloud.com/123/calendars/" }) === "iCloud Calendar,iCloud Reminders");
+ok("fastmail", names({ kind: "caldav", url: "https://caldav.fastmail.com/dav/" }) === "Fastmail Calendar");
+ok("nextcloud", names({ kind: "caldav", url: "https://cloud.example.com/remote.php/dav/calendars/me/" }) === "Nextcloud Calendar,Nextcloud Tasks" && M.webLinks({ kind: "caldav", url: "https://cloud.example.com/remote.php/dav/calendars/me/" })[1].url === "https://cloud.example.com/apps/tasks");
+ok("generic server", names({ kind: "caldav", url: "https://dav.example.org/cal/" }) === "dav.example.org" && M.webLinks({ kind: "caldav", url: "https://dav.example.org/cal/" })[0].url === "https://dav.example.org/");
+ok("no links for files or lan", M.webLinks({ kind: "file", path: "/a.ics" }).length === 0 && M.webLinks({ kind: "vdir", path: "/d" }).length === 0 && M.webLinks({ kind: "caldav", url: "http://192.168.1.2/dav", allowLocalNetwork: true }).length === 0);
+const both = M.webLinksFor([gfeed, Object.assign({}, gfeed), { kind: "caldav", url: "https://p1-caldav.icloud.com/x/", enabled: false }, { kind: "ics-url", url: "https://outlook.live.com/owa/calendar/a/b/c.ics" }]);
+ok("links dedupe, skip disabled, keep order", both.map(l => l.name).join() === "Google Calendar,Google Tasks,Outlook Calendar,Microsoft To Do");
 // timers
 const rem = JSON.stringify({ reminders: [
   { unit: "omarchy-reminder-25m-1", message: " Focus\n", minutes: 25, at: 2000 },

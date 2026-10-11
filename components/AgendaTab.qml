@@ -31,16 +31,7 @@ Item {
   readonly property int shownCount: ranged ? flat.filter(function (e) { return !e.header }).length : rows.length
   readonly property bool isToday: Model.sameDay(selected, store.now)
   // Web calendars for the accounts you are signed into, one button each.
-  readonly property var webLinks: {
-    var seen = {}, out = []
-    var list = store.calendar.calendarSources
-    for (var i = 0; i < list.length; ++i) {
-      if (list[i].enabled === false) continue
-      var w = Model.webCalendar(list[i])
-      if (w && !seen[w.url]) { seen[w.url] = true; out.push(w) }
-    }
-    return out
-  }
+  readonly property var webLinks: Model.webLinksFor(store.calendar.calendarSources)
   readonly property int errorCount: Object.keys(store.errors).length
 
   function pick(day) {
@@ -180,26 +171,18 @@ Item {
       }
     }
 
-    Row {
+    Column {
       id: footer
       anchors.bottom: parent.bottom
       width: parent.width
       spacing: Style.space(6)
-      PText {
-        id: status
-        width: Math.max(0, parent.width - linkRow.width - refresh.width - parent.spacing * 2)
-        anchors.verticalCenter: parent.verticalCenter
-        font.pixelSize: Style.font.bodySmall
-        tone: tab.errorCount > 0 ? Color.urgent : Qt.alpha(Color.popups.text, 0.5)
-        text: !tab.store.hasSources ? "" : tab.store.syncing ? "Syncing\u2026"
-          : tab.errorCount > 0 ? tab.errorCount + (tab.errorCount === 1 ? " calendar needs attention" : " calendars need attention")
-          : tab.store.syncedAt ? "Synced " + tab.store.syncedAt.slice(11, 16) : ""
-      }
-      // Open the real calendar in the default browser, or the default mail app.
-      Row {
+
+      // Open the real calendar, task list and mail in the default browser or
+      // mail app: one button per page your signed-in accounts offer.
+      Flow {
         id: linkRow
+        width: parent.width
         spacing: Style.space(4)
-        anchors.verticalCenter: parent.verticalCenter
         Repeater {
           model: tab.webLinks
           ActionButton {
@@ -211,11 +194,25 @@ Item {
         }
         ActionButton { icon: "mail"; text: "Mail"; onClicked: tab.store.openUrl("mailto:") }
       }
-      ActionButton {
-        id: refresh
-        icon: "refresh"
-        enabled: !tab.store.syncing
-        onClicked: tab.store.sync()
+
+      Row {
+        width: parent.width
+        spacing: Style.space(6)
+        PText {
+          width: parent.width - refresh.width - parent.spacing
+          anchors.verticalCenter: parent.verticalCenter
+          font.pixelSize: Style.font.bodySmall
+          tone: tab.errorCount > 0 ? Color.urgent : Qt.alpha(Color.popups.text, 0.5)
+          text: !tab.store.hasSources ? "" : tab.store.syncing ? "Syncing\u2026"
+            : tab.errorCount > 0 ? tab.errorCount + (tab.errorCount === 1 ? " calendar needs attention" : " calendars need attention")
+            : tab.store.syncedAt ? "Synced " + tab.store.syncedAt.slice(11, 16) : ""
+        }
+        ActionButton {
+          id: refresh
+          icon: "refresh"
+          enabled: !tab.store.syncing
+          onClicked: tab.store.sync()
+        }
       }
     }
   }

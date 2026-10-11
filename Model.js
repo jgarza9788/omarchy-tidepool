@@ -399,25 +399,51 @@ function validateSource(src) {
   return { ok: true, error: "" }
 }
 
-// Where to open this source's calendar in a browser: { name, url } or null
-// (local files have no web page). Never includes secrets: a Google feed's
-// private key stays out of the link; only the account's address is used.
-function webCalendar(src) {
-  if (!src || (src.kind !== "ics-url" && src.kind !== "caldav")) return null
+// The web pages that go with a calendar account, for the Agenda footer:
+// [{ name, url }]. Google gives Calendar and Tasks, Outlook Calendar and To Do,
+// iCloud Calendar and Reminders, Nextcloud Calendar and Tasks; an unknown server
+// just gets its own front page. Local files and LAN servers have none.
+// Never includes secrets: a Google feed's private key stays out of the links;
+// only the account's address is used, to pick the right signed-in account.
+function webLinks(src) {
+  if (!src || (src.kind !== "ics-url" && src.kind !== "caldav")) return []
   var url = String(src.url || ""), host = hostOf(url)
-  if (!host) return null
-  if (host === "calendar.google.com" || host === "www.google.com" || host.slice(-18) === "googleusercontent.com" || host === "apidata.googleusercontent.com") {
+  if (!host) return []
+  if (host === "calendar.google.com" || host === "www.google.com" || host.slice(-18) === "googleusercontent.com") {
     var m = /\/(?:ical|dav|calendars)\/([^\/]+)/.exec(url), who = ""
     try { who = m ? decodeURIComponent(m[1]) : "" } catch (e) { who = "" }
     if (who.indexOf("@") < 0 || who.indexOf("group.calendar.google.com") > 0 || /\s/.test(who)) who = ""
-    return { name: "Google Calendar", url: "https://calendar.google.com/calendar/u/0/r" + (who ? "?authuser=" + encodeURIComponent(who) : "") }
+    var q = who ? "?authuser=" + encodeURIComponent(who) : ""
+    return [{ name: "Google Calendar", url: "https://calendar.google.com/calendar/u/0/r" + q },
+            { name: "Google Tasks", url: "https://calendar.google.com/calendar/u/0/r/tasks" + q }]
   }
-  if (/(^|\.)(outlook\.office365\.com|outlook\.live\.com|outlook\.office\.com)$/.test(host)) return { name: "Outlook", url: "https://outlook.office.com/calendar" }
-  if (/(^|\.)icloud\.com$/.test(host)) return { name: "iCloud", url: "https://www.icloud.com/calendar/" }
-  if (/(^|\.)fastmail\.com$/.test(host)) return { name: "Fastmail", url: "https://app.fastmail.com/calendar/" }
-  if (/\/remote\.php\/dav\//.test(url)) return { name: "Nextcloud", url: "https://" + host + "/apps/calendar" }
-  if (src.allowLocalNetwork) return null
-  return { name: host, url: "https://" + host + "/" }
+  if (/(^|\.)(outlook\.office365\.com|outlook\.live\.com|outlook\.office\.com)$/.test(host))
+    return [{ name: "Outlook Calendar", url: "https://outlook.office.com/calendar" },
+            { name: "Microsoft To Do", url: "https://to-do.office.com/tasks/" }]
+  if (/(^|\.)icloud\.com$/.test(host))
+    return [{ name: "iCloud Calendar", url: "https://www.icloud.com/calendar/" },
+            { name: "iCloud Reminders", url: "https://www.icloud.com/reminders/" }]
+  if (/(^|\.)fastmail\.com$/.test(host)) return [{ name: "Fastmail Calendar", url: "https://app.fastmail.com/calendar/" }]
+  if (/\/remote\.php\/dav\//.test(url))
+    return [{ name: "Nextcloud Calendar", url: "https://" + host + "/apps/calendar" },
+            { name: "Nextcloud Tasks", url: "https://" + host + "/apps/tasks" }]
+  if (src.allowLocalNetwork) return []
+  return [{ name: host, url: "https://" + host + "/" }]
+}
+
+// Every account's links, without repeats, in source order.
+function webLinksFor(sources) {
+  var seen = {}, out = []
+  for (var i = 0; i < (sources || []).length; ++i) {
+    if (sources[i].enabled === false) continue
+    var links = webLinks(sources[i])
+    for (var j = 0; j < links.length; ++j) {
+      if (seen[links[j].url]) continue
+      seen[links[j].url] = true
+      out.push(links[j])
+    }
+  }
+  return out
 }
 
 function sourceTitle(src) {
@@ -544,7 +570,7 @@ if (typeof module !== "undefined" && module.exports) {
     itemsForDay: itemsForDay, agendaGroups: agendaGroups, agendaTitle: agendaTitle, scrollTarget: scrollTarget, upcoming: upcoming, minutesLabel: minutesLabel, ellipsize: ellipsize,
     chip: chip, whenLabel: whenLabel, timeLabel: timeLabel, extrasFor: extrasFor, extraPageCount: extraPageCount, extraPage: extraPage, clockParts: clockParts, monthGrid: monthGrid, weekdayHeaders: weekdayHeaders, dotsForDay: dotsForDay, dueNotifications: dueNotifications, safeUrl: safeUrl, attendeeSummary: attendeeSummary,
     KINDS: KINDS, KIND_LABELS: KIND_LABELS, MAX_SOURCES: MAX_SOURCES, hostOf: hostOf, validateSource: validateSource,
-    SOURCE_COLOR_NAMES: SOURCE_COLOR_NAMES, webCalendar: webCalendar, sourceTitle: sourceTitle, sourceDetail: sourceDetail, errorText: errorText, nextColorName: nextColorName,
+    SOURCE_COLOR_NAMES: SOURCE_COLOR_NAMES, webLinks: webLinks, webLinksFor: webLinksFor, sourceTitle: sourceTitle, sourceDetail: sourceDetail, errorText: errorText, nextColorName: nextColorName,
     validMinutes: validMinutes, validUnit: validUnit, cleanLabel: cleanLabel, parseReminders: parseReminders,
     soonestTimer: soonestTimer, finishedTimers: finishedTimers, remainingLabel: remainingLabel,
     weatherInfo: weatherInfo, zoneWall: zoneWall, offsetFromLocal: offsetFromLocal, zoneCity: zoneCity
