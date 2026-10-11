@@ -356,7 +356,7 @@ FloatingWindow {
             description: "How the spectrum is drawn, in the Media tab and on the bar."
             Choice {
               value: win.cfg.visualizerStyle
-              options: [{ value: "bars", label: "Bars" }, { value: "mirror", label: "Mirror" }, { value: "dots", label: "Dots" }, { value: "wave", label: "Wave" }, { value: "line", label: "Line" }]
+              options: [{ value: "bars", label: "Bars" }, { value: "mirror", label: "Mirror" }, { value: "dots", label: "Dots" }, { value: "wave", label: "Wave" }, { value: "line", label: "Line" }, { value: "fire", label: "Fire" }]
               onPicked: function (v) { win.set({ visualizerStyle: v }) }
             }
           }

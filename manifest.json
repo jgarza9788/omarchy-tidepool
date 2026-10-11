@@ -142,6 +142,11 @@
             "value": "line",
             "label": "Line",
             "description": "The same curve, stroked."
+          },
+          {
+            "value": "fire",
+            "label": "Fire",
+            "description": "Digital fire: flickering square cells in the accent and its neighbouring colors."
           }
         ]
       },

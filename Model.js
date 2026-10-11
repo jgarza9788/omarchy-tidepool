@@ -16,7 +16,7 @@ var GLYPH = {
 function glyph(name) { return GLYPH[name] ? String.fromCodePoint(GLYPH[name]) : "" }
 
 // ── Settings ────────────────────────────────────────────────────────────────
-var VIZ_STYLES = ["bars", "mirror", "dots", "wave", "line"]
+var VIZ_STYLES = ["bars", "mirror", "dots", "wave", "line", "fire"]
 var EXTRA_STYLES = ["plain", "border", "button"]
 var CLOCK_MODES = ["time", "date", "both"]
 var DEFAULTS = {
@@ -362,6 +362,67 @@ function dotLevel(v, row, rows) {
 // Dot diameter factor for a level: resting dots stay visible but tiny.
 function dotScale(level) { return 0.18 + 0.82 * level }
 
+// ── The fire style: a grid of small square cells that flicker ────────────────
+// A square grid, one column per band: { cols, rows, pitch, size } for a box.
+function cellGrid(w, h, cols) {
+  var c = Math.max(1, Math.floor(cols))
+  var pitch = w / c
+  return { cols: c, rows: Math.max(1, Math.floor(h / Math.max(0.01, pitch))), pitch: pitch, size: Math.max(1, pitch * 0.84) }
+}
+
+// A cheap deterministic hash noise in [0, 1): the same (a, b, c) always gives
+// the same value, so the flicker is stable within a frame and changes with `c`.
+function noise(a, b, c) {
+  var h = Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263) ^ Math.imul(c | 0, 1274126177)
+  h = Math.imul(h ^ (h >>> 13), 1103515245)
+  h ^= h >>> 16
+  return (h >>> 0) / 4294967296
+}
+
+// Flame height in rows for a band at level `v` (0..1); `flick` (0..1) makes
+// the tongue lick up and down. Never taller than the grid.
+function fireHeight(v, rows, flick) {
+  return Math.min(rows, Math.max(0, Math.min(1, v)) * rows * (0.8 + 0.4 * flick))
+}
+
+// State of the cell in `row` (0 = bottom) for a flame `height` rows tall, with
+// `nz` (0..1) noise for that cell. The base of a flame is solid; above that
+// the cells dissolve at random, more the higher they are, so the edge is
+// ragged and flickers as `nz` changes. Returns 0..1 for a lit cell (how far up
+// the flame it is: 0 base, 1 tip), 1.5 for a stray spark above the flame, and
+// -1 for a dark cell.
+function fireState(height, row, nz) {
+  if (height < 0.5) return -1
+  var u = row / Math.max(1, height)
+  if (u < 1) {
+    var solid = 0.4
+    if (u <= solid) return u
+    var keep = 1 - (u - solid) / (1 - solid) * 0.92
+    return nz < keep ? u : -1
+  }
+  if (row < height + 3 && nz > 0.985) return 1.5
+  return -1
+}
+
+// Colour for a point `t` up the flame, built from the accent's own hue (h, s, l
+// all 0..1) and the colours next to it on the wheel. Like a real flame it is
+// hottest at the bottom: a bright, slightly shifted core, then the accent, then
+// the neighbouring hue through the body, and a further neighbour fading out at
+// the tips. Returns [h, s, l, a].
+var FIRE_STOPS = [[0, -0.04, 0.16, 1], [0.3, 0, 0.04, 1], [0.65, 0.07, 0, 1], [1, 0.13, 0.05, 0.3]]
+function fireHsl(t, h, s, l) {
+  var spark = t > 1
+  var u = Math.max(0, Math.min(1, t))
+  var a = FIRE_STOPS[0], b = FIRE_STOPS[FIRE_STOPS.length - 1]
+  for (var i = 0; i < FIRE_STOPS.length - 1; ++i)
+    if (u >= FIRE_STOPS[i][0] && u <= FIRE_STOPS[i + 1][0]) { a = FIRE_STOPS[i]; b = FIRE_STOPS[i + 1]; break }
+  var k = b[0] === a[0] ? 0 : (u - a[0]) / (b[0] - a[0])
+  var mix = function (x, y) { return x + (y - x) * k }
+  var hue = (((h + mix(a[1], b[1])) % 1) + 1) % 1
+  var light = Math.max(0.12, Math.min(0.85, l + mix(a[2], b[2])))
+  return [hue, Math.min(1, s * 1.05), light, mix(a[3], b[3]) * (spark ? 0.6 : 1)]
+}
+
 // A smooth SVG path through the spectrum bands for the wave / line styles.
 // x is spread evenly over `w`, y comes from each 0..100 value (100 = top, 0 =
 // the bottom edge at `h`). Smoothed as a Catmull-Rom spline turned into cubic
@@ -629,7 +690,7 @@ function zoneCity(zone) {
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
-    loopNext: loopNext, parseBars: parseBars, glyph: glyph, GLYPH: GLYPH, DEFAULTS: DEFAULTS, CLOCK_MODES: CLOCK_MODES, VIZ_STYLES: VIZ_STYLES, wavePath: wavePath, dotGrid: dotGrid, dotLevel: dotLevel, dotScale: dotScale, EXTRA_STYLES: EXTRA_STYLES, parseColors: parseColors, resolveSettings: resolveSettings, parsePresets: parsePresets, parseZones: parseZones,
+    loopNext: loopNext, parseBars: parseBars, glyph: glyph, GLYPH: GLYPH, DEFAULTS: DEFAULTS, CLOCK_MODES: CLOCK_MODES, VIZ_STYLES: VIZ_STYLES, wavePath: wavePath, cellGrid: cellGrid, noise: noise, fireHeight: fireHeight, fireState: fireState, fireHsl: fireHsl, dotGrid: dotGrid, dotLevel: dotLevel, dotScale: dotScale, EXTRA_STYLES: EXTRA_STYLES, parseColors: parseColors, resolveSettings: resolveSettings, parsePresets: parsePresets, parseZones: parseZones,
     startOfDay: startOfDay, addDays: addDays, sameDay: sameDay, clock: clock, dayKey: dayKey, span: span, onDay: onDay,
     itemsForDay: itemsForDay, agendaGroups: agendaGroups, agendaTitle: agendaTitle, scrollTarget: scrollTarget, upcoming: upcoming, minutesLabel: minutesLabel, ellipsize: ellipsize,
     chip: chip, whenLabel: whenLabel, timeLabel: timeLabel, extrasFor: extrasFor, extraPageCount: extraPageCount, extraPage: extraPage, clockParts: clockParts, monthGrid: monthGrid, weekdayHeaders: weekdayHeaders, dotsForDay: dotsForDay, dueNotifications: dueNotifications, safeUrl: safeUrl, attendeeSummary: attendeeSummary,

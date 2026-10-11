@@ -14,6 +14,8 @@ Item {
 
   readonly property var p: store.player
   readonly property bool has: store.hasPlayer
+  // The player's art URL, ignoring the empty "file:///" some players report when a track has none.
+  readonly property string art: p && p.trackArtUrl && !/\/$/.test(String(p.trackArtUrl)) ? String(p.trackArtUrl) : ""
   readonly property real length: p && p.lengthSupported ? p.length : 0
   readonly property real position: p && p.positionSupported ? p.position : 0
 
@@ -81,14 +83,14 @@ Item {
         clip: true
         Image {
           anchors.fill: parent
-          source: tab.p && tab.p.trackArtUrl ? tab.p.trackArtUrl : ""
+          source: tab.art
           fillMode: Image.PreserveAspectCrop
           asynchronous: true
           visible: status === Image.Ready
         }
         PText {
           anchors.centerIn: parent
-          visible: !tab.p || !tab.p.trackArtUrl
+          visible: tab.art === ""
           text: Model.glyph("media")
           font.pixelSize: Style.space(64)
           tone: Qt.alpha(Color.accent, 0.6)

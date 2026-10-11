@@ -16,6 +16,8 @@ import "../Model.js" as Model
 //           grow and shrink with the sound, loud bands lighting more rows
 //   wave    a smooth filled area under the spectrum
 //   line    the same curve, stroked
+//   fire    digital fire: square cells that flicker, in the accent and the
+//           colours next to it on the wheel
 Item {
   id: viz
 
@@ -26,6 +28,7 @@ Item {
   property real minH: Style.space(3)
   property int bars: 40
   property var values: []
+  property int tick: 0                      // counts cava frames; drives the fire's flicker
   property bool available: true
 
   readonly property bool barLike: styleName === "bars" || styleName === "mirror"
@@ -42,7 +45,7 @@ Item {
     command: ["cava", "-p", Qt.resolvedUrl("../bin/" + viz.config).toString().replace(/^file:\/\//, "")]
     running: viz.active
     stdout: SplitParser {
-      onRead: function (line) { viz.values = Model.parseBars(line, viz.bars) }
+      onRead: function (line) { viz.values = Model.parseBars(line, viz.bars); viz.tick++ }
     }
     onExited: function (code) { if (viz.active && code === 127) viz.available = false }
   }
@@ -125,6 +128,52 @@ Item {
         y: dotsView.height - (row + 0.5) * dotsView.grid.pitchY - d / 2
         color: Color.accent
         opacity: 0.3 + 0.7 * level
+      }
+    }
+  }
+
+  // ── fire: square cells that flicker, tinted from the accent's neighbours ──
+  Item {
+    id: fireView
+    visible: viz.styleName === "fire"
+    anchors.fill: parent
+    readonly property var grid: Model.cellGrid(width, height, viz.bars)
+    readonly property real hue: Color.accent.hslHue
+    readonly property real sat: Color.accent.hslSaturation
+    readonly property real lig: Color.accent.hslLightness
+
+    // Flame height (in rows) per column: the band blended with its neighbours
+    // so tongues are wider than one cell, licked up and down by noise.
+    readonly property var heights: {
+      var out = [], n = viz.bars, v = viz.values, g = grid
+      if (!visible) return out
+      for (var c = 0; c < n; ++c) {
+        var a = (v.length > c ? v[c] : 0) / 100
+        var l = (c > 0 && v.length > c - 1 ? v[c - 1] : 0) / 100
+        var r = (v.length > c + 1 ? v[c + 1] : 0) / 100
+        out.push(Model.fireHeight(0.6 * a + 0.2 * (l + r), g.rows, Model.noise(c, 99, viz.tick >> 1)))
+      }
+      return out
+    }
+
+    Repeater {
+      model: fireView.visible ? fireView.grid.cols * fireView.grid.rows : 0
+      Rectangle {
+        required property int index
+        readonly property int col: index % fireView.grid.cols
+        readonly property int row: Math.floor(index / fireView.grid.cols)
+        readonly property real state: Model.fireState(fireView.heights.length > col ? fireView.heights[col] : 0, row, Model.noise(col, row, viz.tick))
+        readonly property var hsl: Model.fireHsl(state, fireView.hue, fireView.sat, fireView.lig)
+
+        width: fireView.grid.size
+        height: fireView.grid.size
+        x: col * fireView.grid.pitch + (fireView.grid.pitch - width) / 2
+        y: viz.height - (row + 1) * fireView.grid.pitch + (fireView.grid.pitch - height) / 2
+        radius: Math.min(1, width / 4)
+        // lit: the fire colour; dark: a barely-there cell so the grid shows.
+        color: state >= 0 ? Qt.hsla(hsl[0], hsl[1], hsl[2], hsl[3]) : Qt.alpha(Color.accent, 0.06)
+        // every other row a little dimmer: scanlines
+        opacity: row % 2 === 1 ? 0.86 : 1
       }
     }
   }
