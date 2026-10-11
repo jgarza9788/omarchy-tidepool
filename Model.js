@@ -341,6 +341,27 @@ function loopNext(state) {
   return state === "None" ? "Playlist" : state === "Playlist" ? "Track" : "None"
 }
 
+// The dots style: a staggered grid (every other row shifted half a column),
+// one column per band. Returns { cols, rows, pitchX, pitchY, size } for a box;
+// `size` is the biggest dot diameter, a little under the column pitch.
+function dotGrid(w, h, cols) {
+  var c = Math.max(1, Math.floor(cols))
+  var pitchX = w / c
+  var pitchY = pitchX * 0.866            // hex packing: rows sit closer than columns
+  var rows = Math.max(1, Math.floor(h / Math.max(0.01, pitchY)))
+  return { cols: c, rows: rows, pitchX: pitchX, pitchY: pitchY, size: pitchX * 0.86 }
+}
+
+// How "on" the dot in `row` (0 = bottom) is for a band at level `v` (0..1):
+// a loud band lights more rows, and the row at the top of the level grows
+// partway. 0..1.
+function dotLevel(v, row, rows) {
+  return Math.max(0, Math.min(1, Math.max(0, Math.min(1, v)) * rows - row))
+}
+
+// Dot diameter factor for a level: resting dots stay visible but tiny.
+function dotScale(level) { return 0.18 + 0.82 * level }
+
 // A smooth SVG path through the spectrum bands for the wave / line styles.
 // x is spread evenly over `w`, y comes from each 0..100 value (100 = top, 0 =
 // the bottom edge at `h`). Smoothed as a Catmull-Rom spline turned into cubic
@@ -608,7 +629,7 @@ function zoneCity(zone) {
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
-    loopNext: loopNext, parseBars: parseBars, glyph: glyph, GLYPH: GLYPH, DEFAULTS: DEFAULTS, CLOCK_MODES: CLOCK_MODES, VIZ_STYLES: VIZ_STYLES, wavePath: wavePath, EXTRA_STYLES: EXTRA_STYLES, parseColors: parseColors, resolveSettings: resolveSettings, parsePresets: parsePresets, parseZones: parseZones,
+    loopNext: loopNext, parseBars: parseBars, glyph: glyph, GLYPH: GLYPH, DEFAULTS: DEFAULTS, CLOCK_MODES: CLOCK_MODES, VIZ_STYLES: VIZ_STYLES, wavePath: wavePath, dotGrid: dotGrid, dotLevel: dotLevel, dotScale: dotScale, EXTRA_STYLES: EXTRA_STYLES, parseColors: parseColors, resolveSettings: resolveSettings, parsePresets: parsePresets, parseZones: parseZones,
     startOfDay: startOfDay, addDays: addDays, sameDay: sameDay, clock: clock, dayKey: dayKey, span: span, onDay: onDay,
     itemsForDay: itemsForDay, agendaGroups: agendaGroups, agendaTitle: agendaTitle, scrollTarget: scrollTarget, upcoming: upcoming, minutesLabel: minutesLabel, ellipsize: ellipsize,
     chip: chip, whenLabel: whenLabel, timeLabel: timeLabel, extrasFor: extrasFor, extraPageCount: extraPageCount, extraPage: extraPage, clockParts: clockParts, monthGrid: monthGrid, weekdayHeaders: weekdayHeaders, dotsForDay: dotsForDay, dueNotifications: dueNotifications, safeUrl: safeUrl, attendeeSummary: attendeeSummary,

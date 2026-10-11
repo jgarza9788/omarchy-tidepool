@@ -12,7 +12,8 @@ import "../Model.js" as Model
 // `styleName` picks how it is drawn (see Model.VIZ_STYLES):
 //   bars    upward rounded bars
 //   mirror  bars growing up and down from a centre line
-//   dots    one dot per band, at the band's level
+//   dots    a staggered grid of small dots, one column per band; the dots
+//           grow and shrink with the sound, loud bands lighting more rows
 //   wave    a smooth filled area under the spectrum
 //   line    the same curve, stroked
 Item {
@@ -27,7 +28,7 @@ Item {
   property var values: []
   property bool available: true
 
-  readonly property bool barLike: styleName === "bars" || styleName === "mirror" || styleName === "dots"
+  readonly property bool barLike: styleName === "bars" || styleName === "mirror"
   readonly property real slotW: (width - (bars - 1) * gap) / bars
   readonly property real stroke: Math.max(1, Math.min(Style.space(2), height / 6))
 
@@ -46,7 +47,7 @@ Item {
     onExited: function (code) { if (viz.active && code === 127) viz.available = false }
   }
 
-  // ── bars / mirror / dots: one slot per band ──
+  // ── bars / mirror: one slot per band ──
   Row {
     visible: viz.barLike
     anchors.fill: parent
@@ -57,7 +58,6 @@ Item {
         id: slot
         required property int index
         readonly property real v: viz.values.length > index ? viz.values[index] / 100 : 0
-        readonly property real dot: Math.max(Style.space(2), Math.min(viz.slotW * 0.8, Style.space(8)))
         width: viz.slotW
         height: viz.height
 
@@ -91,19 +91,40 @@ Item {
           opacity: 0.4 + 0.6 * slot.v
           Behavior on height { NumberAnimation { duration: 70; easing.type: Easing.OutQuad } }
         }
+      }
+    }
+  }
 
-        // dots: a dot riding at the band's level
-        Rectangle {
-          visible: viz.styleName === "dots"
-          x: (parent.width - slot.dot) / 2
-          y: (parent.height - slot.dot) * (1 - slot.v)
-          width: slot.dot
-          height: slot.dot
-          radius: width / 2
-          color: Color.accent
-          opacity: 0.35 + 0.65 * slot.v
-          Behavior on y { NumberAnimation { duration: 70; easing.type: Easing.OutQuad } }
-        }
+  // ── dots: a staggered grid, every other row shifted half a column ──
+  Item {
+    id: dotsView
+    visible: viz.styleName === "dots"
+    anchors.fill: parent
+    readonly property var grid: Model.dotGrid(width, height, viz.bars)
+    function band(i) { return viz.values.length > i ? viz.values[i] / 100 : 0 }
+
+    Repeater {
+      model: dotsView.visible ? dotsView.grid.rows * dotsView.grid.cols : 0
+      Rectangle {
+        id: dot
+        required property int index
+        readonly property int row: Math.floor(index / dotsView.grid.cols)
+        readonly property int col: index % dotsView.grid.cols
+        readonly property bool shifted: row % 2 === 1
+        // A shifted row sits between two columns, so it follows both.
+        readonly property real v: shifted ? (dotsView.band(col) + dotsView.band(col + 1)) / 2 : dotsView.band(col)
+        // Same rule as Model.dotLevel / dotScale, inline: this runs for every dot every frame.
+        readonly property real level: Math.max(0, Math.min(1, v * dotsView.grid.rows - row))
+        readonly property real d: Math.max(1, dotsView.grid.size * (0.18 + 0.82 * level))
+
+        visible: !shifted || col < dotsView.grid.cols - 1
+        width: d
+        height: d
+        radius: d / 2
+        x: (col + 0.5 + (shifted ? 0.5 : 0)) * dotsView.grid.pitchX - d / 2
+        y: dotsView.height - (row + 0.5) * dotsView.grid.pitchY - d / 2
+        color: Color.accent
+        opacity: 0.3 + 0.7 * level
       }
     }
   }

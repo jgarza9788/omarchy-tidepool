@@ -131,7 +131,7 @@
           {
             "value": "dots",
             "label": "Dots",
-            "description": "One dot per band at its level."
+            "description": "A grid of small dots that grow and shrink with the sound."
           },
           {
             "value": "wave",

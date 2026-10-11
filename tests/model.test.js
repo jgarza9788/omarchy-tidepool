@@ -27,6 +27,13 @@ ok("legacy rotateExtras", M.resolveSettings({ rotateExtras: true }).extrasShown 
 ok("media options default off", M.resolveSettings({}).showMediaStatus === false && M.resolveSettings({}).miniVisualizer === false);
 ok("media options on", M.resolveSettings({ showMediaStatus: true, miniVisualizer: "true" }).showMediaStatus === true && M.resolveSettings({ miniVisualizer: "true" }).miniVisualizer === true && M.resolveSettings({ miniVisualizer: "no" }).miniVisualizer === false);
 ok("visualizer style", M.resolveSettings({}).visualizerStyle === "bars" && M.VIZ_STYLES.every(v => M.resolveSettings({ visualizerStyle: v }).visualizerStyle === v) && M.resolveSettings({ visualizerStyle: "neon" }).visualizerStyle === "bars");
+const dg = M.dotGrid(900, 120, 48);
+ok("dot grid: hex packing", dg.cols === 48 && Math.abs(dg.pitchX - 18.75) < 1e-9 && Math.abs(dg.pitchY - 18.75 * 0.866) < 1e-9 && dg.rows === Math.floor(120 / (18.75 * 0.866)) && dg.size < dg.pitchX);
+ok("dot grid: tiny and degenerate boxes", M.dotGrid(22, 12, 8).rows >= 4 && M.dotGrid(10, 0, 4).rows === 1 && M.dotGrid(0, 0, 0).cols === 1);
+ok("dot level: loud bands light more rows", M.dotLevel(1, 0, 5) === 1 && M.dotLevel(1, 4, 5) === 1 && M.dotLevel(0, 0, 5) === 0 && M.dotLevel(0.5, 0, 4) === 1 && M.dotLevel(0.5, 2, 4) === 0);
+ok("dot level: the top row grows partway", Math.abs(M.dotLevel(0.3, 1, 5) - 0.5) < 1e-9 && Math.abs(M.dotLevel(0.1, 0, 5) - 0.5) < 1e-9);
+ok("dot level: clamps bad input", M.dotLevel(9, 0, 5) === 1 && M.dotLevel(-3, 4, 5) === 0);
+ok("dot scale", M.dotScale(0) === 0.18 && M.dotScale(1) === 1 && M.dotScale(0.5) > M.dotScale(0.2));
 const wp = M.wavePath([0, 50, 100, 20], 90, 40, false);
 ok("wave path: one curve per gap", wp.startsWith("M0 40") && (wp.match(/C/g) || []).length === 3 && !wp.includes("Z"));
 const nums = (wavePathStr) => (wavePathStr.match(/-?\d+(\.\d+)?/g) || []).map(Number);

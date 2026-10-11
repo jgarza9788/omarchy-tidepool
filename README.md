@@ -106,7 +106,7 @@ Everything has a switch in the Settings window. They are also plain keys on the 
 | `format`, `dateFormat` | `HH:mm`, `ddd d MMM` | Qt date formats |
 | `showEvent` `showTimer` `showMedia` `showWeather` | `true` `true` `false` `false` | which extras appear |
 | `showMediaStatus`, `miniVisualizer` | `false` | play / pause icon on the media extra (it then stays while paused); a few live spectrum bars beside the track (needs `cava`) |
-| `visualizerStyle` | `bars` | `bars`, `mirror`, `dots`, `wave` or `line`: how the spectrum is drawn, in the Media tab and on the bar |
+| `visualizerStyle` | `bars` | `bars`, `mirror`, `dots` (a grid of dots that swell with the sound), `wave` or `line`: how the spectrum is drawn, in the Media tab and on the bar |
 | `extrasShown` | `4` | how many extras at once (0 hides them and the divider) |
 | `extraStyle` | `plain` | `plain`, `border` or `button` |
 | `rotateSeconds` | `6` | seconds per page when extras swap |
