@@ -16,10 +16,11 @@ var GLYPH = {
 function glyph(name) { return GLYPH[name] ? String.fromCodePoint(GLYPH[name]) : "" }
 
 // ── Settings ────────────────────────────────────────────────────────────────
+var VIZ_STYLES = ["bars", "mirror", "dots", "wave", "line"]
 var EXTRA_STYLES = ["plain", "border", "button"]
 var CLOCK_MODES = ["time", "date", "both"]
 var DEFAULTS = {
-  clockMode: "time", showEvent: true, showTimer: true, showMedia: false, showWeather: false, extrasShown: 4, extraStyle: "plain", showMediaStatus: false, miniVisualizer: false,
+  clockMode: "time", showEvent: true, showTimer: true, showMedia: false, showWeather: false, extrasShown: 4, extraStyle: "plain", showMediaStatus: false, miniVisualizer: false, visualizerStyle: "bars",
   format: "HH:mm", dateFormat: "ddd d MMM", peekOnHover: true,
   rotateSeconds: 6, soonMinutes: 15, notifyMinutes: 5, chipMaxChars: 22, chipHorizonHours: 12, tideLine: true, weatherCity: "", weatherLat: null, weatherLon: null, units: "metric",
   worldClocks: "", timerPresets: "5,15,25,45", weekStart: "monday"
@@ -64,6 +65,7 @@ function resolveSettings(raw) {
   out.peekOnHover = out.peekOnHover !== false && out.peekOnHover !== "false"
   out.showMediaStatus = out.showMediaStatus === true || out.showMediaStatus === "true"
   out.miniVisualizer = out.miniVisualizer === true || out.miniVisualizer === "true"
+  if (VIZ_STYLES.indexOf(out.visualizerStyle) < 0) out.visualizerStyle = DEFAULTS.visualizerStyle
   if (EXTRA_STYLES.indexOf(out.extraStyle) < 0) out.extraStyle = DEFAULTS.extraStyle
   out.extrasShown = clamp(out.extrasShown, 0, 4, DEFAULTS.extrasShown)
   out.rotateSeconds = clamp(out.rotateSeconds, 2, 60, DEFAULTS.rotateSeconds)
@@ -339,6 +341,33 @@ function loopNext(state) {
   return state === "None" ? "Playlist" : state === "Playlist" ? "Track" : "None"
 }
 
+// A smooth SVG path through the spectrum bands for the wave / line styles.
+// x is spread evenly over `w`, y comes from each 0..100 value (100 = top, 0 =
+// the bottom edge at `h`). Smoothed as a Catmull-Rom spline turned into cubic
+// Beziers; control points are kept inside [0, h] so it never overshoots the
+// box. `closed` adds the baseline so the area under the curve can be filled.
+function wavePath(values, w, h, closed) {
+  var n = values ? values.length : 0
+  function f(v) { return Math.round(v * 100) / 100 }
+  function clampY(y) { return Math.max(0, Math.min(h, y)) }
+  if (n < 2) return "M0 " + f(h) + " L" + f(w) + " " + f(h) + (closed ? " L" + f(w) + " " + f(h) + " Z" : "")
+  var xs = [], ys = []
+  for (var i = 0; i < n; ++i) {
+    var v = Math.max(0, Math.min(100, Number(values[i]) || 0))
+    xs.push(w * i / (n - 1))
+    ys.push(h - v / 100 * h)
+  }
+  var d = "M" + f(xs[0]) + " " + f(ys[0])
+  for (var j = 0; j < n - 1; ++j) {
+    var p0 = Math.max(0, j - 1), p3 = Math.min(n - 1, j + 2)
+    var c1x = xs[j] + (xs[j + 1] - xs[p0]) / 6, c1y = clampY(ys[j] + (ys[j + 1] - ys[p0]) / 6)
+    var c2x = xs[j + 1] - (xs[p3] - xs[j]) / 6, c2y = clampY(ys[j + 1] - (ys[p3] - ys[j]) / 6)
+    d += " C" + f(c1x) + " " + f(c1y) + " " + f(c2x) + " " + f(c2y) + " " + f(xs[j + 1]) + " " + f(ys[j + 1])
+  }
+  if (closed) d += " L" + f(xs[n - 1]) + " " + f(h) + " L" + f(xs[0]) + " " + f(h) + " Z"
+  return d
+}
+
 // cava line "0;12;55;" -> [0, 12, 55] (0..100), padded/cut to `bars`.
 function parseBars(line, bars) {
   var out = []
@@ -579,7 +608,7 @@ function zoneCity(zone) {
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
-    loopNext: loopNext, parseBars: parseBars, glyph: glyph, GLYPH: GLYPH, DEFAULTS: DEFAULTS, CLOCK_MODES: CLOCK_MODES, EXTRA_STYLES: EXTRA_STYLES, parseColors: parseColors, resolveSettings: resolveSettings, parsePresets: parsePresets, parseZones: parseZones,
+    loopNext: loopNext, parseBars: parseBars, glyph: glyph, GLYPH: GLYPH, DEFAULTS: DEFAULTS, CLOCK_MODES: CLOCK_MODES, VIZ_STYLES: VIZ_STYLES, wavePath: wavePath, EXTRA_STYLES: EXTRA_STYLES, parseColors: parseColors, resolveSettings: resolveSettings, parsePresets: parsePresets, parseZones: parseZones,
     startOfDay: startOfDay, addDays: addDays, sameDay: sameDay, clock: clock, dayKey: dayKey, span: span, onDay: onDay,
     itemsForDay: itemsForDay, agendaGroups: agendaGroups, agendaTitle: agendaTitle, scrollTarget: scrollTarget, upcoming: upcoming, minutesLabel: minutesLabel, ellipsize: ellipsize,
     chip: chip, whenLabel: whenLabel, timeLabel: timeLabel, extrasFor: extrasFor, extraPageCount: extraPageCount, extraPage: extraPage, clockParts: clockParts, monthGrid: monthGrid, weekdayHeaders: weekdayHeaders, dotsForDay: dotsForDay, dueNotifications: dueNotifications, safeUrl: safeUrl, attendeeSummary: attendeeSummary,

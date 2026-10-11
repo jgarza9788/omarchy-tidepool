@@ -265,6 +265,7 @@ Item {
       height: Math.max(Style.space(70), parent.height - y)
       active: tab.visible && tab.has && tab.store.playing
       bars: 48
+      styleName: tab.store.cfg.visualizerStyle
     }
   }
 

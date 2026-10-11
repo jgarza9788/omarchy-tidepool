@@ -41,7 +41,8 @@
       "extraStyle": "plain",
       "notifyMinutes": 5,
       "showMediaStatus": false,
-      "miniVisualizer": false
+      "miniVisualizer": false,
+      "visualizerStyle": "bars"
     },
     "schema": [
       {
@@ -109,6 +110,40 @@
         "label": "Mini visualizer",
         "description": "A few live spectrum bars next to the title while it plays (runs cava).",
         "defaultValue": false
+      },
+      {
+        "key": "visualizerStyle",
+        "type": "enum",
+        "label": "Visualizer style",
+        "description": "How the spectrum is drawn, in the Media tab and on the bar.",
+        "defaultValue": "bars",
+        "options": [
+          {
+            "value": "bars",
+            "label": "Bars",
+            "description": "Upward rounded bars."
+          },
+          {
+            "value": "mirror",
+            "label": "Mirror",
+            "description": "Bars growing up and down from the middle."
+          },
+          {
+            "value": "dots",
+            "label": "Dots",
+            "description": "One dot per band at its level."
+          },
+          {
+            "value": "wave",
+            "label": "Wave",
+            "description": "A smooth filled area."
+          },
+          {
+            "value": "line",
+            "label": "Line",
+            "description": "The same curve, stroked."
+          }
+        ]
       },
       {
         "key": "extrasShown",

@@ -351,6 +351,36 @@ FloatingWindow {
             description: "A few live spectrum bars next to the title while it plays. Runs cava in the background, only while something is playing."
             Switch { checked: win.cfg.miniVisualizer; onToggled: win.set({ miniVisualizer: !win.cfg.miniVisualizer }) }
           }
+          SettingRow {
+            label: "Visualizer style"
+            description: "How the spectrum is drawn, in the Media tab and on the bar."
+            Choice {
+              value: win.cfg.visualizerStyle
+              options: [{ value: "bars", label: "Bars" }, { value: "mirror", label: "Mirror" }, { value: "dots", label: "Dots" }, { value: "wave", label: "Wave" }, { value: "line", label: "Line" }]
+              onPicked: function (v) { win.set({ visualizerStyle: v }) }
+            }
+          }
+
+          // A live preview, so each style can be seen as you pick it.
+          Rectangle {
+            width: parent.width
+            height: Style.space(110)
+            radius: Style.space(10)
+            color: Qt.alpha(Color.popups.text, 0.05)
+            Visualizer {
+              anchors.fill: parent
+              anchors.margins: Style.space(12)
+              active: win.section === "media" && !!win.store && win.store.playing
+              bars: 48
+              styleName: win.cfg.visualizerStyle
+            }
+            PText {
+              visible: !win.store || !win.store.playing
+              anchors.centerIn: parent
+              text: "Play something to see a preview."
+              tone: Qt.alpha(Color.popups.text, 0.5)
+            }
+          }
 
           PText {
             width: parent.width

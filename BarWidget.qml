@@ -360,6 +360,7 @@ BarWidget {
                   implicitHeight: height
                   active: entry.modelData === "media" && root.cfg.miniVisualizer && store.playing
                   config: "cava-mini.conf"
+                  styleName: root.cfg.visualizerStyle
                   bars: 8
                   gap: Style.space(1)
                   minH: Style.space(2)

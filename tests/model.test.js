@@ -26,6 +26,15 @@ ok("legacy face rotate", M.resolveSettings({ face: "rotate" }).extrasShown === 1
 ok("legacy rotateExtras", M.resolveSettings({ rotateExtras: true }).extrasShown === 1 && M.resolveSettings({ rotateExtras: false }).extrasShown === 4 && M.resolveSettings({ rotateExtras: true, extrasShown: 2 }).extrasShown === 2);
 ok("media options default off", M.resolveSettings({}).showMediaStatus === false && M.resolveSettings({}).miniVisualizer === false);
 ok("media options on", M.resolveSettings({ showMediaStatus: true, miniVisualizer: "true" }).showMediaStatus === true && M.resolveSettings({ miniVisualizer: "true" }).miniVisualizer === true && M.resolveSettings({ miniVisualizer: "no" }).miniVisualizer === false);
+ok("visualizer style", M.resolveSettings({}).visualizerStyle === "bars" && M.VIZ_STYLES.every(v => M.resolveSettings({ visualizerStyle: v }).visualizerStyle === v) && M.resolveSettings({ visualizerStyle: "neon" }).visualizerStyle === "bars");
+const wp = M.wavePath([0, 50, 100, 20], 90, 40, false);
+ok("wave path: one curve per gap", wp.startsWith("M0 40") && (wp.match(/C/g) || []).length === 3 && !wp.includes("Z"));
+const nums = (wavePathStr) => (wavePathStr.match(/-?\d+(\.\d+)?/g) || []).map(Number);
+const wild = M.wavePath([0, 100, 0, 100, 0, 100, 0], 60, 30, true);
+ok("wave path stays inside the box", (() => { const n = nums(wild); const xs = n.filter((_, i) => i % 2 === 0), ys = n.filter((_, i) => i % 2 === 1); return xs.every(v => v >= 0 && v <= 60) && ys.every(v => v >= 0 && v <= 30) })());
+ok("closed wave ends on the baseline", /L60 30 L0 30 Z$/.test(wild));
+ok("wave path clamps bad input", /^M0 40/.test(M.wavePath([-50, 500, "x"], 20, 40, false)) && !/NaN/.test(M.wavePath([NaN, undefined, null], 20, 40, true)));
+ok("wave path with nothing is a flat baseline", M.wavePath([], 50, 10, false) === "M0 10 L50 10" && M.wavePath(null, 50, 10, true).endsWith("Z"));
 ok("extra style", M.resolveSettings({}).extraStyle === "plain" && M.resolveSettings({ extraStyle: "border" }).extraStyle === "border" && M.resolveSettings({ extraStyle: "button" }).extraStyle === "button" && M.resolveSettings({ extraStyle: "neon" }).extraStyle === "plain");
 ok("extrasShown clamps", M.resolveSettings({ extrasShown: 9 }).extrasShown === 4 && M.resolveSettings({ extrasShown: -1 }).extrasShown === 0 && M.resolveSettings({ extrasShown: 0 }).extrasShown === 0);
 const ex = ["event", "timer", "media", "weather"];
