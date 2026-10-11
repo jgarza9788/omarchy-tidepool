@@ -9,6 +9,7 @@ Item {
   id: tab
 
   required property var store
+  property var host: null
   property bool typing: false
   signal gotoTab(string name)
 
@@ -25,6 +26,8 @@ Item {
     if (t === "n") { if (p && p.canGoNext) p.next(); return true }
     if (t === "p") { if (p && p.canGoPrevious) p.previous(); return true }
     if (t === "s") { toggleShuffle(); return true }
+    if (t === "v") { stepVisualizer(1); return true }
+    if (t === "V") { stepVisualizer(-1); return true }
     if (t === "r") { cycleRepeat(); return true }
     if (t === "+" || t === "=") { nudgeVolume(0.05); return true }
     if (t === "-") { nudgeVolume(-0.05); return true }
@@ -38,6 +41,10 @@ Item {
   readonly property bool volumeOk: !!p && p.volumeSupported
   readonly property string loopName: !p ? "None" : (p.loopState === MprisLoopState.Track ? "Track" : p.loopState === MprisLoopState.Playlist ? "Playlist" : "None")
   property real lastVolume: 0.7
+
+  // Visualizer style: step to the previous / next and keep the choice.
+  readonly property string vizStyle: store.cfg.visualizerStyle
+  function stepVisualizer(delta) { if (host) host.persist({ visualizerStyle: Model.vizStep(vizStyle, delta) }) }
 
   function toggleShuffle() { if (shuffleOk) p.shuffle = !p.shuffle }
   function cycleRepeat() {
@@ -263,11 +270,44 @@ Item {
     }
 
     Visualizer {
+      id: mainViz
       width: parent.width
       height: Math.max(Style.space(70), parent.height - y)
       active: tab.visible && tab.has && tab.store.playing
       bars: 48
       styleName: tab.store.cfg.visualizerStyle
+    }
+  }
+
+  // [<] Style [>] in the visualizer's bottom-right corner.
+  Rectangle {
+    visible: tab.has && mainViz.available
+    anchors.right: parent.right
+    anchors.bottom: parent.bottom
+    anchors.rightMargin: Style.space(6)
+    anchors.bottomMargin: Style.space(6)
+    width: pick.implicitWidth + Style.space(8)
+    height: pick.implicitHeight + Style.space(6)
+    radius: Style.space(8)
+    color: Qt.alpha(Color.popups.background, 0.78)
+    border.width: 1
+    border.color: Qt.alpha(Color.popups.text, 0.12)
+
+    Row {
+      id: pick
+      anchors.centerIn: parent
+      spacing: Style.space(2)
+      ActionButton { icon: "left"; tooltip: "Previous visualizer"; onClicked: tab.stepVisualizer(-1) }
+      PText {
+        anchors.verticalCenter: parent.verticalCenter
+        width: Style.space(58)
+        horizontalAlignment: Text.AlignHCenter
+        text: Model.vizLabel(tab.vizStyle)
+        font.bold: true
+        font.pixelSize: Style.font.bodySmall
+        elide: Text.ElideNone
+      }
+      ActionButton { icon: "right"; tooltip: "Next visualizer"; onClicked: tab.stepVisualizer(1) }
     }
   }
 

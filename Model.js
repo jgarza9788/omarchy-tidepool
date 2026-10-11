@@ -17,6 +17,15 @@ function glyph(name) { return GLYPH[name] ? String.fromCodePoint(GLYPH[name]) : 
 
 // ── Settings ────────────────────────────────────────────────────────────────
 var VIZ_STYLES = ["bars", "mirror", "dots", "wave", "line", "fire"]
+var VIZ_LABELS = { bars: "Bars", mirror: "Mirror", dots: "Dots", wave: "Wave", line: "Line", fire: "Fire" }
+// The name shown for a style, and the style `delta` steps away (wraps round).
+function vizLabel(style) { return VIZ_LABELS[style] || VIZ_LABELS.bars }
+function vizStep(style, delta) {
+  var at = VIZ_STYLES.indexOf(style)
+  if (at < 0) at = 0
+  var n = VIZ_STYLES.length
+  return VIZ_STYLES[(((at + delta) % n) + n) % n]
+}
 var EXTRA_STYLES = ["plain", "border", "button"]
 var CLOCK_MODES = ["time", "date", "both"]
 var DEFAULTS = {
@@ -690,7 +699,7 @@ function zoneCity(zone) {
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
-    loopNext: loopNext, parseBars: parseBars, glyph: glyph, GLYPH: GLYPH, DEFAULTS: DEFAULTS, CLOCK_MODES: CLOCK_MODES, VIZ_STYLES: VIZ_STYLES, wavePath: wavePath, cellGrid: cellGrid, noise: noise, fireHeight: fireHeight, fireState: fireState, fireHsl: fireHsl, dotGrid: dotGrid, dotLevel: dotLevel, dotScale: dotScale, EXTRA_STYLES: EXTRA_STYLES, parseColors: parseColors, resolveSettings: resolveSettings, parsePresets: parsePresets, parseZones: parseZones,
+    loopNext: loopNext, parseBars: parseBars, glyph: glyph, GLYPH: GLYPH, DEFAULTS: DEFAULTS, CLOCK_MODES: CLOCK_MODES, VIZ_STYLES: VIZ_STYLES, vizLabel: vizLabel, vizStep: vizStep, wavePath: wavePath, cellGrid: cellGrid, noise: noise, fireHeight: fireHeight, fireState: fireState, fireHsl: fireHsl, dotGrid: dotGrid, dotLevel: dotLevel, dotScale: dotScale, EXTRA_STYLES: EXTRA_STYLES, parseColors: parseColors, resolveSettings: resolveSettings, parsePresets: parsePresets, parseZones: parseZones,
     startOfDay: startOfDay, addDays: addDays, sameDay: sameDay, clock: clock, dayKey: dayKey, span: span, onDay: onDay,
     itemsForDay: itemsForDay, agendaGroups: agendaGroups, agendaTitle: agendaTitle, scrollTarget: scrollTarget, upcoming: upcoming, minutesLabel: minutesLabel, ellipsize: ellipsize,
     chip: chip, whenLabel: whenLabel, timeLabel: timeLabel, extrasFor: extrasFor, extraPageCount: extraPageCount, extraPage: extraPage, clockParts: clockParts, monthGrid: monthGrid, weekdayHeaders: weekdayHeaders, dotsForDay: dotsForDay, dueNotifications: dueNotifications, safeUrl: safeUrl, attendeeSummary: attendeeSummary,

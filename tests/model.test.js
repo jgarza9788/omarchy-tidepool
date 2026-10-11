@@ -27,6 +27,9 @@ ok("legacy rotateExtras", M.resolveSettings({ rotateExtras: true }).extrasShown 
 ok("media options default off", M.resolveSettings({}).showMediaStatus === false && M.resolveSettings({}).miniVisualizer === false);
 ok("media options on", M.resolveSettings({ showMediaStatus: true, miniVisualizer: "true" }).showMediaStatus === true && M.resolveSettings({ miniVisualizer: "true" }).miniVisualizer === true && M.resolveSettings({ miniVisualizer: "no" }).miniVisualizer === false);
 ok("visualizer style", M.resolveSettings({}).visualizerStyle === "bars" && M.VIZ_STYLES.length === 6 && M.VIZ_STYLES.every(v => M.resolveSettings({ visualizerStyle: v }).visualizerStyle === v) && M.resolveSettings({ visualizerStyle: "neon" }).visualizerStyle === "bars");
+ok("viz labels", M.VIZ_STYLES.every(v => M.vizLabel(v).length > 0 && M.vizLabel(v)[0] === M.vizLabel(v)[0].toUpperCase()) && M.vizLabel("fire") === "Fire" && M.vizLabel("nope") === "Bars");
+ok("viz step wraps both ways", M.vizStep("bars", 1) === "mirror" && M.vizStep("bars", -1) === "fire" && M.vizStep("fire", 1) === "bars" && M.vizStep("dots", -1) === "mirror" && M.vizStep("bars", 6) === "bars" && M.vizStep("bars", -7) === "fire");
+ok("viz step from an unknown style starts at the first", M.vizStep("nope", 1) === "mirror" && M.vizStep(undefined, 0) === "bars");
 const cg = M.cellGrid(900, 120, 48);
 ok("cell grid is square", cg.cols === 48 && cg.pitch === 18.75 && cg.rows === 6 && cg.size < cg.pitch && M.cellGrid(10, 0, 0).rows === 1);
 ok("noise is deterministic and in range", M.noise(3, 4, 5) === M.noise(3, 4, 5) && M.noise(3, 4, 5) !== M.noise(3, 4, 6) && (() => { for (let i = 0; i < 2000; ++i) { const n = M.noise(i, i * 7, i * 13); if (!(n >= 0 && n < 1)) return false } return true })());

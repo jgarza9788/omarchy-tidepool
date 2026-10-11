@@ -80,7 +80,7 @@ Panel {
   function loadTab() {
     if (!store) return
     var props = { store: root.store }
-    if (tab === "clocks") props.host = root
+    if (tab === "clocks" || tab === "media") props.host = root
     tabLoader.setSource(Qt.resolvedUrl("components/" + {
       agenda: "AgendaTab", timers: "TimersTab", media: "MediaTab", weather: "WeatherTab", clocks: "ClocksTab"
     }[tab] + ".qml"), props)

@@ -33,7 +33,7 @@ Tidepool started as a bar-resident, theme-colored take on the
 | --- | --- |
 | **Agenda** | Month grid and the day's events, or the next 3 / 7 / 14 / 30 days grouped by day. Events with a call link (Meet, Zoom, Teams, Webex…) get a **Join** button; click an event for its organizer, attendees and description. Buttons at the bottom open the web pages that go with the accounts you've added, in your default browser (Google: Calendar, Tasks and Gmail; Outlook: Calendar, To Do and Mail; iCloud: Calendar, Reminders and Mail; Fastmail: Calendar and Mail; Nextcloud: Calendar and Tasks), plus a Mail button for your mail app. |
 | **Timers** | Presets, custom minutes and a pomodoro. They are real Omarchy reminders. |
-| **Media** | Whatever is playing, in any MPRIS app: art, seek bar, shuffle, repeat, volume, an app switcher and a live audio spectrum. |
+| **Media** | Whatever is playing, in any MPRIS app: art, seek bar, shuffle, repeat, volume, an app switcher and a live audio spectrum with a ‹ style › switcher in its corner. |
 | **Weather** | Current conditions and a 5-day forecast. |
 | **Clocks** | World clocks. |
 
@@ -130,7 +130,7 @@ Older names still work: the `showMusic` option, the `player` and `music` tab nam
 | Middle click | open the timezone picker |
 | `Tab` / `Shift+Tab`, `1`–`5` | switch tabs |
 | `←` `→` · `[` `]` · `t` · `r` · `Esc` | agenda: day, month, today, sync; close |
-| Media tab: `space` `n` `p` `s` `r` `+` `-` | play/pause, next, previous, shuffle, repeat, volume |
+| Media tab: `space` `n` `p` `s` `r` `+` `-` `v` | play/pause, next, previous, shuffle, repeat, volume, next visualizer (`V` for previous) |
 
 Shell commands:
 
