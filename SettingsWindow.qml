@@ -23,6 +23,7 @@ FloatingWindow {
   readonly property var sections: [
     { id: "datetime", label: "Date & time", icon: "clock" },
     { id: "extras", label: "Bar extras", icon: "plus" },
+    { id: "music", label: "Music", icon: "music" },
     { id: "appearance", label: "Appearance", icon: "palette" },
     { id: "calendars", label: "Calendars", icon: "calendar-plus" },
     { id: "agenda", label: "Agenda", icon: "calendar" },
@@ -195,27 +196,19 @@ FloatingWindow {
             Switch { checked: win.cfg.showTimer; onToggled: win.set({ showTimer: !win.cfg.showTimer }) }
           }
           SettingRow {
-            label: "Music"
-            description: "Artist and title of what is playing."
-            Switch { checked: win.cfg.showMusic; onToggled: win.set({ showMusic: !win.cfg.showMusic }) }
-          }
-          SettingRow {
             label: "Weather"
             description: "Icon and temperature. Needs a city under Weather."
             Switch { checked: win.cfg.showWeather; onToggled: win.set({ showWeather: !win.cfg.showWeather }) }
           }
-          PText { text: "Music extra"; font.bold: true; tone: Color.accent; topPadding: Style.space(16); bottomPadding: Style.space(2); elide: Text.ElideNone }
-          SettingRow {
-            label: "Show play / pause status"
-            description: "A play or pause icon before the track. The extra then stays on the bar while the track is paused; without it, it only shows while playing."
-            Switch { checked: win.cfg.showMediaStatus; onToggled: win.set({ showMediaStatus: !win.cfg.showMediaStatus }) }
+          PText {
+            width: parent.width
+            topPadding: Style.space(6)
+            wrapMode: Text.Wrap
+            elide: Text.ElideNone
+            font.pixelSize: Style.font.bodySmall
+            tone: Qt.alpha(Color.popups.text, 0.55)
+            text: "The music extra has its own section: Music."
           }
-          SettingRow {
-            label: "Mini visualizer"
-            description: "A few live spectrum bars next to the track while it plays. Runs cava in the background, only while music is playing."
-            Switch { checked: win.cfg.miniVisualizer; onToggled: win.set({ miniVisualizer: !win.cfg.miniVisualizer }) }
-          }
-
           PText { text: "How they show"; font.bold: true; tone: Color.accent; topPadding: Style.space(16); bottomPadding: Style.space(2); elide: Text.ElideNone }
           SettingRow {
             label: "Extras shown at once"
@@ -284,6 +277,49 @@ FloatingWindow {
             label: "Day-progress line"
             description: "A hairline under the widget that fills as the day passes."
             Switch { checked: win.cfg.tideLine; onToggled: win.set({ tideLine: !win.cfg.tideLine }) }
+          }
+        }
+      }
+
+      // Music
+      Flickable {
+        anchors.fill: parent
+        anchors.margins: Style.space(22)
+        visible: win.section === "music"
+        contentHeight: music.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+
+        Column {
+          id: music
+          width: parent.width
+          PText { text: "Music"; font.pixelSize: Style.font.heading; font.bold: true; elide: Text.ElideNone }
+          Item { width: 1; height: Style.space(8) }
+
+          SettingRow {
+            label: "Show on the bar"
+            description: "Show the playing track on the bar after the divider. Turn this off to hide it, whatever the options below say."
+            Switch { checked: win.cfg.showMusic; onToggled: win.set({ showMusic: !win.cfg.showMusic }) }
+          }
+          SettingRow {
+            label: "Show play / pause status"
+            description: "A play or pause icon before the track. The extra then stays on the bar while the track is paused; without it, it only shows while playing."
+            Switch { checked: win.cfg.showMediaStatus; onToggled: win.set({ showMediaStatus: !win.cfg.showMediaStatus }) }
+          }
+          SettingRow {
+            label: "Mini visualizer"
+            description: "A few live spectrum bars next to the track while it plays. Runs cava in the background, only while music is playing."
+            Switch { checked: win.cfg.miniVisualizer; onToggled: win.set({ miniVisualizer: !win.cfg.miniVisualizer }) }
+          }
+
+          PText {
+            width: parent.width
+            topPadding: Style.space(14)
+            wrapMode: Text.Wrap
+            elide: Text.ElideNone
+            font.pixelSize: Style.font.bodySmall
+            tone: Qt.alpha(Color.popups.text, 0.6)
+            text: "Works with any MPRIS player (Spotify, mpv, jellyfin-tui, a browser…). The Player tab in the panel has the full controls."
           }
         }
       }
