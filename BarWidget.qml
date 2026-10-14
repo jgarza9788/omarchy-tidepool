@@ -117,7 +117,7 @@ BarWidget {
       { store: store, host: root, section: root.settingsSection, visible: true })
   }
   // Each extra opens the panel on its own tab; clicking it again closes it.
-  readonly property var extraTabs: ({ event: "agenda", timer: "timers", media: "media", weather: "weather" })
+  readonly property var extraTabs: ({ event: "agenda", timer: "timer", media: "media", weather: "weather" })
   // The bar sends every click to the widget as one press, with no position.
   // So the extra under the pointer is tracked by hover, and a left press on
   // it opens that extra's tab.
@@ -147,7 +147,9 @@ BarWidget {
   }
   function openExtra(name) {
     var tab = extraTabs[name] || "agenda"
-    if (opened && panelLoader.item && panelLoader.item.tab === tab) close()
+    // The timer extra opens the Clock tab on its Timer view.
+    var landing = tab === "timer" ? "clock" : tab
+    if (opened && panelLoader.item && panelLoader.item.tab === landing && (landing !== "clock" || panelLoader.item.store.clockView === "timer")) close()
     else showTab(tab)
   }
   function showTab(name) { if (panelLoader.item) panelLoader.item.showTab(name) }

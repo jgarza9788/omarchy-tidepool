@@ -574,7 +574,7 @@ FloatingWindow {
             bottomPadding: Style.space(8)
             font.pixelSize: Style.font.bodySmall
             tone: Qt.alpha(Color.popups.text, 0.6)
-            text: "Search for a city or time zone and pick it. Up to 6 show in the Clocks tab."
+            text: "Search for a city or time zone and pick it. Up to 6 show in the Clock tab."
           }
 
           // The zones you have, with a way to drop each.

@@ -7,7 +7,7 @@ var DAY_MS = 24 * 60 * 60 * 1000
 var GLYPH = {
   calendar: 0xF00ED, "calendar-plus": 0xF00F3, timer: 0xF051B, media: 0xF0386, play: 0xF040A, pause: 0xF03E4, next: 0xF04AD, prev: 0xF04AE,
   left: 0xF0141, right: 0xF0142, close: 0xF0156, plus: 0xF0415, trash: 0xF01B4, refresh: 0xF0450, cog: 0xF0493,
-  globe: 0xF01E7, check: 0xF012C, alert: 0xF0026, thermo: 0xF050F, wind: 0xF059D, pin: 0xF0403,
+  alarm: 0xF0020, globe: 0xF01E7, check: 0xF012C, alert: 0xF0026, thermo: 0xF050F, wind: 0xF059D, pin: 0xF0403,
   clock: 0xF0150, palette: 0xF03D8,
   video: 0xF0567, open: 0xF03CC, mail: 0xF01EE, account: 0xF0004, shuffle: 0xF049D, repeat: 0xF0456, "repeat-once": 0xF0458, volume: 0xF057E, "volume-off": 0xF0581,
   sun: 0xF0599, moon: 0xF0594, "partly-day": 0xF0595, "partly-night": 0xF0F31, cloud: 0xF0590, fog: 0xF0591,
@@ -692,6 +692,107 @@ function remainingLabel(ms) {
   return h > 0 ? h + ":" + pad(m) + ":" + pad(s) : m + ":" + pad(s)
 }
 
+// A pomodoro as a chain of reminders (minutes from now): each cycle is a focus
+// block then a break.
+function pomodoroPlan(cycles, focus, brk) {
+  var n = clamp(cycles, 1, 8, 1), f = clamp(focus, 1, 180, 25), b = clamp(brk, 1, 60, 5)
+  var plan = [], at = 0
+  for (var i = 1; i <= n; ++i) {
+    at += f
+    plan.push({ minutes: at, label: n === 1 ? "Focus done. Take " + b + "." : "Focus " + i + "/" + n + " done. Take " + b + "." })
+    at += b
+    plan.push({ minutes: at, label: i === n && n > 1 ? "Pomodoro finished. Nice work." : "Break over. Back to it." })
+  }
+  return plan
+}
+
+// ── Alarms (wall-clock, repeating on days 0 = Mon ... 6 = Sun) ──────────────
+var DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+// "7:30", "07:30", "730", "7:30pm", "7 am" -> "07:30", or "" when it isn't a time.
+function parseTimeInput(text) {
+  var m = /^\s*(\d{1,2})(?::?(\d{2}))?\s*([ap]m?)?\s*$/i.exec(String(text || ""))
+  if (!m) return ""
+  var h = Number(m[1]), min = m[2] === undefined ? 0 : Number(m[2])
+  if (min > 59) return ""
+  if (m[3]) {
+    if (h < 1 || h > 12) return ""
+    h = h % 12 + (m[3].toLowerCase().charAt(0) === "p" ? 12 : 0)
+  } else if (h > 23) return ""
+  return pad(h) + ":" + pad(min)
+}
+
+function alarmDaysLabel(days) {
+  var d = (days || []).slice().sort()
+  if (d.length === 0) return "Once"
+  var key = d.join("")
+  if (key === "0123456") return "Every day"
+  if (key === "01234") return "Weekdays"
+  if (key === "56") return "Weekends"
+  return d.map(function (i) { return DAY_NAMES[i] }).join(", ")
+}
+
+// The next moment an enabled alarm goes off after `now` (a Date), or null.
+function alarmNext(alarm, now) {
+  if (!alarm || !alarm.enabled) return null
+  var parts = String(alarm.time).split(":")
+  var h = Number(parts[0]), m = Number(parts[1])
+  if (!isFinite(h) || !isFinite(m)) return null
+  if (!alarm.days || alarm.days.length === 0) {
+    var dp = String(alarm.date || "").split("-")
+    if (dp.length !== 3) return null
+    var once = new Date(Number(dp[0]), Number(dp[1]) - 1, Number(dp[2]), h, m, 0)
+    return once > now ? once : null
+  }
+  for (var i = 0; i < 8; ++i) {
+    var day = addDays(startOfDay(now), i)
+    var at = new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, m, 0)
+    if (at > now && alarm.days.indexOf((day.getDay() + 6) % 7) >= 0) return at
+  }
+  return null
+}
+
+// One-off alarms whose moment has passed but are still switched on.
+function alarmsExpired(alarms, now) {
+  return (alarms || []).some(function (a) {
+    return a.enabled && (!a.days || a.days.length === 0) && alarmNext(a, now) === null
+  })
+}
+
+// The soonest upcoming alarm: { alarm, at } or null.
+function soonestAlarm(alarms, now) {
+  var best = null
+  for (var i = 0; i < (alarms || []).length; ++i) {
+    var at = alarmNext(alarms[i], now)
+    if (at && (!best || at < best.at)) best = { alarm: alarms[i], at: at }
+  }
+  return best
+}
+
+function nextAlarmLabel(alarms, now) {
+  var n = soonestAlarm(alarms, now)
+  if (!n) return ""
+  var same = sameDay(n.at, now)
+  return (same ? "Today" : DAY_NAMES[(n.at.getDay() + 6) % 7]) + " " + clock(n.at)
+}
+
+// ── Stopwatch ───────────────────────────────────────────────────────────────
+// 83450 -> "1:23.45"; an hour or more -> "1:01:23.45".
+function stopwatchLabel(ms) {
+  var cs = Math.floor(Math.max(0, ms) / 10)
+  var c = cs % 100, total = Math.floor(cs / 100)
+  var h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60), s = total % 60
+  return (h > 0 ? h + ":" + pad(m) : m) + ":" + pad(s) + "." + pad(c)
+}
+
+// Laps recorded as running totals (ms) -> newest first, with each split.
+function lapRows(totals) {
+  var out = []
+  for (var i = 0; i < (totals || []).length; ++i)
+    out.push({ n: i + 1, total: totals[i], split: totals[i] - (i > 0 ? totals[i - 1] : 0) })
+  return out.reverse()
+}
+
 // ── Weather & world clocks ──────────────────────────────────────────────────
 // WMO weather code -> { text, icon } (icon is a Nerd Font glyph name key).
 function weatherInfo(code, isDay) {
@@ -708,6 +809,14 @@ function weatherInfo(code, isDay) {
   if (c === 85 || c === 86) return { text: "Snow showers", icon: "snow" }
   if (c >= 95) return { text: "Thunderstorm", icon: "storm" }
   return { text: "Unknown", icon: "cloud" }
+}
+
+// UV index -> "3 low" / "6 high" (WHO bands); "" when unknown.
+function uvLabel(uv) {
+  var n = Number(uv)
+  if (uv === null || uv === undefined || isNaN(n)) return ""
+  var band = n < 3 ? "low" : n < 6 ? "moderate" : n < 8 ? "high" : n < 11 ? "very high" : "extreme"
+  return Math.round(n) + " " + band
 }
 
 // Wall-clock time in a zone with the given UTC offset (minutes), as a Date
@@ -738,7 +847,8 @@ if (typeof module !== "undefined" && module.exports) {
     KINDS: KINDS, KIND_LABELS: KIND_LABELS, MAX_SOURCES: MAX_SOURCES, hostOf: hostOf, validateSource: validateSource,
     SOURCE_COLOR_NAMES: SOURCE_COLOR_NAMES, webLinks: webLinks, webLinksFor: webLinksFor, sourceTitle: sourceTitle, sourceDetail: sourceDetail, errorText: errorText, nextColorName: nextColorName,
     validMinutes: validMinutes, validUnit: validUnit, cleanLabel: cleanLabel, parseReminders: parseReminders,
+    pomodoroPlan: pomodoroPlan, DAY_NAMES: DAY_NAMES, parseTimeInput: parseTimeInput, alarmDaysLabel: alarmDaysLabel, alarmNext: alarmNext, alarmsExpired: alarmsExpired, soonestAlarm: soonestAlarm, nextAlarmLabel: nextAlarmLabel, stopwatchLabel: stopwatchLabel, lapRows: lapRows,
     soonestTimer: soonestTimer, finishedTimers: finishedTimers, remainingLabel: remainingLabel,
-    weatherInfo: weatherInfo, zoneWall: zoneWall, offsetFromLocal: offsetFromLocal, zoneCity: zoneCity
+    weatherInfo: weatherInfo, uvLabel: uvLabel, zoneWall: zoneWall, offsetFromLocal: offsetFromLocal, zoneCity: zoneCity
   }
 }

@@ -440,6 +440,79 @@ class HelperTest(unittest.TestCase):
         self.assertIsNone(h.known_place({"city": "x", "lat": "", "lon": ""}))
         self.assertIsNone(h.known_place({"city": "x"}))
 
+    def test_hourly_rows(self):
+        rows = h.hourly_rows({"time": ["2026-10-13T14:00", "2026-10-13T15:00"],
+                              "temperature_2m": [20.5, 21], "precipitation_probability": [10, None],
+                              "weather_code": [3, 61], "is_day": [1, 0], "uv_index": [5.5]})
+        self.assertEqual(rows[0], {"time": "2026-10-13T14:00", "temp": 20.5, "rain": 10, "code": 3, "isDay": True, "uv": 5.5})
+        self.assertEqual((rows[1]["rain"], rows[1]["isDay"], rows[1]["uv"]), (0, False, 0))
+        self.assertEqual(h.hourly_rows({}), [])
+
+    def test_clean_alarm(self):
+        now = dt.datetime(2026, 10, 13, 10, 0)
+        a = h.clean_alarm({"id": "bad id", "time": "7:05", "days": [4, 0, 0, 9, "x", True], "label": " Wake \n up "}, now)
+        self.assertEqual((a["time"], a["days"], a["label"], a["enabled"]), ("07:05", [0, 4], "Wake up", True))
+        self.assertRegex(a["id"], h.ALARM_ID_RE)
+        self.assertNotIn("date", a)
+        self.assertIsNone(h.clean_alarm({"time": "24:00"}, now))
+        self.assertIsNone(h.clean_alarm({"time": "9:60"}, now))
+        self.assertIsNone(h.clean_alarm("nope", now))
+        # a one-off remembers its day: later today, or tomorrow once the time has passed
+        self.assertEqual(h.clean_alarm({"time": "11:30"}, now)["date"], "2026-10-13")
+        self.assertEqual(h.clean_alarm({"time": "09:30"}, now)["date"], "2026-10-14")
+        self.assertEqual(h.clean_alarm({"time": "09:30", "date": "2026-11-01"}, now)["date"], "2026-11-01")
+        self.assertNotIn("date", h.clean_alarm({"time": "09:30", "enabled": False}, now))
+
+    def test_alarm_calendar(self):
+        now = dt.datetime(2026, 10, 13, 10, 0)
+        mk = lambda **kw: h.clean_alarm(dict({"id": "abcdef12", "time": "07:00"}, **kw), now)
+        self.assertEqual(h.alarm_calendar(mk(days=[0, 1, 2, 3, 4])), "Mon,Tue,Wed,Thu,Fri *-*-* 07:00:00")
+        self.assertEqual(h.alarm_calendar(mk(days=list(range(7)))), "*-*-* 07:00:00")
+        self.assertEqual(h.alarm_calendar(mk()), "2026-10-14 07:00:00")
+
+    def test_alarm_expired(self):
+        now = dt.datetime(2026, 10, 13, 10, 0)
+        once = h.clean_alarm({"time": "09:00", "date": "2026-10-13"}, now)
+        self.assertTrue(h.alarm_expired(once, now))
+        self.assertFalse(h.alarm_expired(h.clean_alarm({"time": "11:00", "date": "2026-10-13"}, now), now))
+        self.assertFalse(h.alarm_expired(h.clean_alarm({"time": "09:00", "days": [1]}, now), now))
+
+    def test_settings_keep_alarms(self):
+        out = h.clean_settings({"alarms": [{"time": "06:30", "days": [0], "id": "abcdef12"}, {"time": "bad"}] + [{"time": "08:00", "id": "abcdef12"}] * 3})
+        self.assertEqual([a["id"] for a in out["alarms"]], ["abcdef12"])
+        self.assertEqual(h.clean_settings({})["alarms"], [])
+
+    def test_alarms_sync_runs_systemd(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.environ["TIDEPOOL_CONFIG_DIR"] = d
+            try:
+                h.settings_set({"values": {"alarms": [
+                    {"id": "aaaaaa11", "time": "06:30", "days": [0, 1], "label": "Gym"},
+                    {"id": "bbbbbb22", "time": "06:30", "days": [0], "enabled": False},
+                    {"id": "cccccc33", "time": "00:01", "date": "2020-01-01"}]}})
+                calls = []
+
+                def fake(cmd, timeout=4):
+                    calls.append(cmd)
+                    out = "tidepool-alarm-old1.timer loaded active waiting x\nother.timer x\n" if cmd[:3] == ["systemctl", "--user", "list-units"] else ""
+                    return type("R", (), {"returncode": 0, "stdout": out})()
+                real, h._run = h._run, fake
+                try:
+                    out = h.alarms_sync()
+                finally:
+                    h._run = real
+                runs = [c for c in calls if c[0] == "systemd-run"]
+                self.assertEqual(len(runs), 1)
+                self.assertIn("--unit=tidepool-alarm-aaaaaa11", runs[0])
+                self.assertIn("--on-calendar=Mon,Tue *-*-* 06:30:00", runs[0])
+                self.assertIn("Gym", runs[0])
+                self.assertIn(["systemctl", "--user", "stop", "tidepool-alarm-old1.timer", "tidepool-alarm-old1.service"], calls)
+                self.assertFalse([c for c in calls if "other.timer" in c])
+                gone = [a for a in out["values"]["alarms"] if a["id"] == "cccccc33"][0]
+                self.assertFalse(gone["enabled"])
+            finally:
+                os.environ.pop("TIDEPOOL_CONFIG_DIR", None)
+
     def test_weather_needs_city(self):
         with self.assertRaises(h.HelperError) as c:
             h.weather({"city": " "})

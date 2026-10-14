@@ -189,11 +189,41 @@ ok("remaining label", M.remainingLabel(65000) === "1:05" && M.remainingLabel(372
 
 // weather & zones
 ok("weather codes", M.weatherInfo(0, true).icon === "sun" && M.weatherInfo(0, false).icon === "moon" && M.weatherInfo(63).icon === "rain" && M.weatherInfo(96).icon === "storm");
+ok("uvLabel", M.uvLabel(2.4) === "2 low" && M.uvLabel(7) === "7 high" && M.uvLabel(12) === "12 extreme" && M.uvLabel(null) === "");
 const w = M.zoneWall(Date.UTC(2026, 9, 11, 12, 0, 0), 540);
 ok("zone wall time", w.getHours() === 21 && w.getMinutes() === 0 && w.getDate() === 11);
 ok("zone wall day rollover", M.zoneWall(Date.UTC(2026, 9, 11, 20, 0, 0), 540).getDate() === 12);
 ok("offset label", M.offsetFromLocal(540, -420) === "+16h" && M.offsetFromLocal(-420, -420) === "same" && M.offsetFromLocal(330, 0) === "+5h30");
 ok("zone city", M.zoneCity("America/New_York") === "New York");
+
+
+// ── Pomodoro, alarms, stopwatch ──
+{
+  const one = M.pomodoroPlan(1, 25, 5);
+  ok("pomodoro 1 cycle", one.length === 2 && one[0].minutes === 25 && one[0].label === "Focus done. Take 5." && one[1].minutes === 30 && one[1].label === "Break over. Back to it.");
+  const four = M.pomodoroPlan(4, 25, 5);
+  ok("pomodoro 4 cycles", four.length === 8 && four[2].minutes === 55 && four[2].label === "Focus 2/4 done. Take 5." && four[7].minutes === 120 && /finished/.test(four[7].label));
+  ok("pomodoro clamps", M.pomodoroPlan(99, 25, 5).length === 16 && M.pomodoroPlan(0, 25, 5).length === 2);
+
+  ok("parseTimeInput", M.parseTimeInput("7:30") === "07:30" && M.parseTimeInput("730") === "07:30" && M.parseTimeInput("7:30pm") === "19:30" && M.parseTimeInput("12 am") === "00:00" && M.parseTimeInput("12pm") === "12:00" && M.parseTimeInput("23:59") === "23:59");
+  ok("parseTimeInput rejects", M.parseTimeInput("24:00") === "" && M.parseTimeInput("9:75") === "" && M.parseTimeInput("13pm") === "" && M.parseTimeInput("abc") === "" && M.parseTimeInput("") === "");
+  ok("alarmDaysLabel", M.alarmDaysLabel([]) === "Once" && M.alarmDaysLabel([0,1,2,3,4,5,6]) === "Every day" && M.alarmDaysLabel([4,3,2,1,0]) === "Weekdays" && M.alarmDaysLabel([5,6]) === "Weekends" && M.alarmDaysLabel([2,0]) === "Mon, Wed");
+
+  // 2026-10-11 is a Sunday (day index 6); `now` is 09:00.
+  const wk = { time: "07:00", days: [0, 1, 2, 3, 4], enabled: true };
+  const nx = M.alarmNext(wk, now);
+  ok("alarmNext weekday skips to Monday", nx.getDate() === 12 && nx.getHours() === 7);
+  ok("alarmNext later today", M.alarmNext({ time: "10:00", days: [6], enabled: true }, now).getDate() === 11);
+  ok("alarmNext time passed today -> next week", M.alarmNext({ time: "08:00", days: [6], enabled: true }, now).getDate() === 18);
+  ok("alarmNext disabled", M.alarmNext({ time: "10:00", days: [6], enabled: false }, now) === null);
+  ok("alarmNext one-off", M.alarmNext({ time: "10:00", days: [], date: "2026-10-11", enabled: true }, now).getHours() === 10 && M.alarmNext({ time: "08:00", days: [], date: "2026-10-11", enabled: true }, now) === null);
+  ok("alarmsExpired", M.alarmsExpired([{ time: "08:00", days: [], date: "2026-10-11", enabled: true }], now) && !M.alarmsExpired([{ time: "10:00", days: [], date: "2026-10-11", enabled: true }, wk, { time: "08:00", days: [], date: "2026-10-01", enabled: false }], now));
+  ok("nextAlarmLabel", M.nextAlarmLabel([wk, { time: "09:30", days: [6], enabled: true }], now) === "Today 09:30" && M.nextAlarmLabel([wk], now) === "Mon 07:00" && M.nextAlarmLabel([], now) === "");
+
+  ok("stopwatchLabel", M.stopwatchLabel(0) === "0:00.00" && M.stopwatchLabel(83450) === "1:23.45" && M.stopwatchLabel(3683450) === "1:01:23.45" && M.stopwatchLabel(-5) === "0:00.00");
+  const laps = M.lapRows([1000, 3500, 4000]);
+  ok("lapRows", laps.length === 3 && laps[0].n === 3 && laps[0].split === 500 && laps[2].n === 1 && laps[2].split === 1000 && laps[1].total === 3500);
+}
 
 console.log(failed ? failed + " FAILED" : "all passed");
 process.exit(failed ? 1 : 0);

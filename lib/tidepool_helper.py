@@ -83,8 +83,9 @@ SOURCE_KEYS = ("kind", "path", "url", "user", "label", "color", "colorName", "en
 SETTING_DEFAULTS = {
     "calendarSources": [], "calendarSelection": [], "calendarRefresh": 15,
     "hideAllDayEvents": False, "autoScrollToNextEvent": True, "showFullEventTitles": False,
-    "agendaDays": 1,
+    "agendaDays": 1, "alarms": [],
 }
+MAX_ALARMS = 20
 AGENDA_DAYS = (1, 3, 7, 14, 30)
 
 
@@ -136,6 +137,9 @@ def clean_settings(values):
     for k in ("hideAllDayEvents", "autoScrollToNextEvent", "showFullEventTitles"):
         if k in values:
             out[k] = bool(values[k])
+    alarms = [clean_alarm(a) for a in (values.get("alarms") or [])[:MAX_ALARMS]] if isinstance(values.get("alarms"), list) else []
+    seen = set()
+    out["alarms"] = [a for a in alarms if a and not (a["id"] in seen or seen.add(a["id"]))]
     return out
 
 
@@ -612,6 +616,25 @@ def known_place(args):
             "country": bits[-1] if len(bits) > 1 else "", "lat": lat, "lon": lon}
 
 
+HOURLY_COUNT = 12
+
+
+def _col(block, key, i, default=None):
+    """The i-th value of an Open-Meteo column, or default if it is missing/short."""
+    vals = block.get(key) or []
+    return vals[i] if i < len(vals) and vals[i] is not None else default
+
+
+def hourly_rows(hourly):
+    """Open-Meteo's column-per-field `hourly` block -> one dict per hour."""
+    return [{"time": t, "temp": _col(hourly, "temperature_2m", i, 0),
+             "rain": _col(hourly, "precipitation_probability", i, 0),
+             "code": _col(hourly, "weather_code", i, 0),
+             "isDay": bool(_col(hourly, "is_day", i, 1)),
+             "uv": _col(hourly, "uv_index", i, 0)}
+            for i, t in enumerate((hourly.get("time") or [])[:HOURLY_COUNT])]
+
+
 def weather(args):
     city = (args.get("city") or "").strip()
     place = known_place(args)
@@ -622,21 +645,27 @@ def weather(args):
     imperial = args.get("units") == "imperial"
     q = {"latitude": place["lat"], "longitude": place["lon"], "timezone": "auto", "forecast_days": 5,
          "current": "temperature_2m,apparent_temperature,weather_code,wind_speed_10m,is_day",
-         "daily": "weather_code,temperature_2m_max,temperature_2m_min"}
+         "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max",
+         "hourly": "temperature_2m,precipitation_probability,weather_code,is_day,uv_index",
+         "forecast_hours": HOURLY_COUNT}
     if imperial:
         q.update(temperature_unit="fahrenheit", wind_speed_unit="mph")
     data = json_get(OPEN_METEO + "?" + urllib.parse.urlencode(q))
     cur, daily = data.get("current") or {}, data.get("daily") or {}
+    hours = hourly_rows(data.get("hourly") or {})
     days = []
     for i, day in enumerate(daily.get("time") or []):
         days.append({"date": day, "code": (daily.get("weather_code") or [0] * 99)[i],
                      "max": (daily.get("temperature_2m_max") or [0] * 99)[i],
-                     "min": (daily.get("temperature_2m_min") or [0] * 99)[i]})
+                     "min": (daily.get("temperature_2m_min") or [0] * 99)[i],
+                     "rain": _col(daily, "precipitation_probability_max", i, 0),
+                     "uv": _col(daily, "uv_index_max", i, 0)})
     return {"place": place, "units": "imperial" if imperial else "metric",
             "current": {"temp": cur.get("temperature_2m"), "feels": cur.get("apparent_temperature"),
                         "code": cur.get("weather_code", 0), "wind": cur.get("wind_speed_10m"),
-                        "isDay": bool(cur.get("is_day", 1))},
-            "days": days}
+                        "isDay": bool(cur.get("is_day", 1)),
+                        "uv": hours[0]["uv"] if hours else 0},
+            "hours": hours, "days": days}
 
 
 # ── World clocks ─────────────────────────────────────────────────────────────
@@ -683,6 +712,107 @@ def search_zones(args):
         out.append({"zone": name, "city": parts[-1].replace("_", " "),
                     "region": " / ".join(p.replace("_", " ") for p in parts[:-1])})
     return {"zones": out}
+
+
+# ── Alarms ───────────────────────────────────────────────────────────────────
+# Each enabled alarm is a transient systemd user timer (tidepool-alarm-<id>)
+# that runs notify-send, so it survives a shell restart and handles sleep and
+# daylight-saving changes. Days are 0 = Monday ... 6 = Sunday.
+ALARM_ID_RE = re.compile(r"^[a-z0-9]{6,16}$")
+ALARM_TIME_RE = re.compile(r"^([01]?\d|2[0-3]):([0-5]\d)$")
+DAY_NAMES = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+
+
+def next_occurrence(hour, minute, now):
+    """The next date (as datetime) at hour:minute that is still ahead of `now`."""
+    at = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    return at if at > now else at + dt.timedelta(days=1)
+
+
+def clean_alarm(raw, now=None):
+    if not isinstance(raw, dict):
+        return None
+    m = ALARM_TIME_RE.match(str(raw.get("time", "")).strip())
+    if not m:
+        return None
+    hour, minute = int(m.group(1)), int(m.group(2))
+    aid = str(raw.get("id", ""))
+    if not ALARM_ID_RE.match(aid):
+        aid = hashlib.sha256(os.urandom(16)).hexdigest()[:10]
+    days = sorted({d for d in (raw.get("days") or []) if isinstance(d, int) and not isinstance(d, bool) and 0 <= d <= 6}) \
+        if isinstance(raw.get("days"), list) else []
+    label = re.sub(r"\s+", " ", re.sub(r"[\x00-\x1f\x7f]", " ", str(raw.get("label") or ""))).strip()[:80]
+    out = {"id": aid, "time": "%02d:%02d" % (hour, minute), "days": days, "label": label, "enabled": bool(raw.get("enabled", True))}
+    if not days and out["enabled"]:
+        # A one-off alarm remembers the day it is set for, so it fires once.
+        date = str(raw.get("date") or "")
+        try:
+            dt.date.fromisoformat(date)
+        except ValueError:
+            date = next_occurrence(hour, minute, now or dt.datetime.now()).date().isoformat()
+        out["date"] = date
+    return out
+
+
+def alarm_calendar(alarm):
+    """systemd OnCalendar= expression for a cleaned alarm."""
+    hhmm = alarm["time"] + ":00"
+    if alarm["days"]:
+        if len(alarm["days"]) == 7:
+            return "*-*-* " + hhmm
+        return ",".join(DAY_NAMES[d] for d in alarm["days"]) + " *-*-* " + hhmm
+    return alarm["date"] + " " + hhmm
+
+
+def alarm_expired(alarm, now):
+    """A one-off alarm whose moment has passed."""
+    if alarm["days"] or not alarm.get("date"):
+        return False
+    h, m = alarm["time"].split(":")
+    try:
+        when = dt.datetime.combine(dt.date.fromisoformat(alarm["date"]), dt.time(int(h), int(m)))
+    except ValueError:
+        return True
+    return when <= now
+
+
+def alarm_unit(alarm):
+    return "tidepool-alarm-" + alarm["id"]
+
+
+def alarms_sync(args=None):
+    """Make the systemd user timers match the saved alarms: stop every
+    tidepool-alarm-* timer, then start one per enabled alarm. One-off alarms
+    that have already gone off are switched off in the saved settings."""
+    now = dt.datetime.now()
+    current = settings_get()["values"]
+    alarms, changed = [], False
+    for a in current["alarms"]:
+        if a["enabled"] and alarm_expired(a, now):
+            a = dict(a, enabled=False)
+            a.pop("date", None)
+            changed = True
+        alarms.append(a)
+    if changed:
+        current = settings_set({"values": {"alarms": alarms}})["values"]
+        alarms = current["alarms"]
+    listed = _run(["systemctl", "--user", "list-units", "--all", "--plain", "--no-legend", "--type=timer", "tidepool-alarm-*.timer"], 10)
+    for line in (listed.stdout.splitlines() if listed and listed.returncode == 0 else []):
+        unit = line.split(None, 1)[0] if line.strip() else ""
+        if re.match(r"^tidepool-alarm-[a-z0-9]+\.timer$", unit):
+            _run(["systemctl", "--user", "stop", unit, unit[:-6] + ".service"], 10)
+    started = 0
+    for a in alarms:
+        if not a["enabled"]:
+            continue
+        body = a["time"] + (" · " + ", ".join(DAY_NAMES[d] for d in a["days"]) if a["days"] else "")
+        r = _run(["systemd-run", "--user", "--quiet", "--collect", "--unit=" + alarm_unit(a),
+                  "--description=Tidepool alarm", "--on-calendar=" + alarm_calendar(a), "--timer-property=AccuracySec=1s",
+                  "notify-send", "-a", "Tidepool", "-u", "critical", "-i", "alarm-symbolic", "--",
+                  a["label"] or "Alarm", body], 10)
+        if r is not None and r.returncode == 0:
+            started += 1
+    return {"values": current, "started": started}
 
 
 # ── Event notifications ──────────────────────────────────────────────────────
@@ -848,6 +978,8 @@ def main(argv):
             _out(settings_get())
         elif cmd == "settings-set":
             _out(settings_set(args))
+        elif cmd == "alarms-sync":
+            _out(with_ids(alarms_sync(args)["values"]))
         elif cmd == "import-nookisle":
             _out(import_nookisle(args))
         elif cmd == "ids":

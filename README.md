@@ -1,7 +1,7 @@
 # Tidepool
 
 A calm clock for the [Omarchy](https://omarchy.org) bar that carries the next thing on your
-calendar, and opens into an agenda, timers, media, weather and world clocks.
+calendar, and opens into an agenda, a clock (world clocks, alarms, stopwatch, timers), media and weather.
 
 It lives *in* the bar, replacing the clock, and draws everything with the bar's own colors and your
 theme accent, so it blends in rather than sitting on top. The panel is a tab that grows out of the
@@ -32,10 +32,9 @@ Tidepool started as a bar-resident, theme-colored take on the
 | Tab | |
 | --- | --- |
 | **Agenda** | Month grid and the day's events, or the next 3 / 7 / 14 / 30 days grouped by day. Events with a call link (Meet, Zoom, Teams, Webex…) get a **Join** button; click an event for its organizer, attendees and description. Buttons at the bottom open the web pages that go with the accounts you've added, in your default browser (Google: Calendar, Tasks and Gmail; Outlook: Calendar, To Do and Mail; iCloud: Calendar, Reminders and Mail; Fastmail: Calendar and Mail; Nextcloud: Calendar and Tasks), plus a Mail button for your mail app. |
-| **Timers** | Presets, custom minutes and a pomodoro. They are real Omarchy reminders. |
+| **Clock** | A switcher at the top picks **World**, **Alarm**, **Stopwatch** or **Timer** (the iPhone's order). World: your world clocks, chosen in Settings. Alarm: a time of day with optional repeat days (or once), as systemd user timers that survive a shell restart and notify on their own. Stopwatch: start, lap and reset; it keeps running while the panel is closed, but not across a shell restart. Timer: presets, custom minutes and a pomodoro that can queue several focus/break cycles; they are real Omarchy reminders. |
 | **Media** | Whatever is playing, in any MPRIS app: art, seek bar, shuffle, repeat, volume, an app list and a live audio spectrum with a ‹ style › switcher in its corner. Clicking an app brings its window to the front (it works for terminal players, native apps and browsers). If the chosen app has nothing playing, the tab says so and keeps the app list so you can pick another. |
 | **Weather** | Current conditions and a 5-day forecast. |
-| **Clocks** | World clocks. |
 
 A separate **Settings** window (the button after the tabs) holds every option. It has sections for the bar (Date & time, Bar extras, Appearance), one for each extra (Next event, Timer, Media, Weather), and for what the panel shows (Calendars, Agenda, World clocks). Bar extras holds the on/off switches for all the extras; each extra's own section starts with the same switch.
 
@@ -137,7 +136,7 @@ Shell commands:
 
 ```sh
 omarchy-shell jgarza.tidepool open|close|toggle|sync|cycleMode
-omarchy-shell jgarza.tidepool tab agenda|timers|media|weather|clocks
+omarchy-shell jgarza.tidepool tab agenda|clock|media|weather   (also: clocks|alarm|stopwatch|timer, which open that view of Clock)
 omarchy-shell jgarza.tidepool settings [section]
 omarchy-shell jgarza.tidepool app [name]        # make the Media tab follow an app; no name = automatic
 omarchy-shell jgarza.tidepool timer <minutes> <label>
@@ -147,7 +146,7 @@ omarchy-shell jgarza.tidepool timer <minutes> <label>
 
 Tidepool talks to the network only for what you set up: your calendar URLs, and
 [Open-Meteo](https://open-meteo.com) (no key) for weather and the city search. The time zone search is local.
-Nothing else leaves your machine. Timers, media and clocks are local.
+Nothing else leaves your machine. Clocks, alarms, timers and media are local.
 
 ## Development
 

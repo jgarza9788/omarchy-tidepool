@@ -99,8 +99,61 @@ Item {
             tone: Qt.alpha(Color.popups.text, 0.65)
             text: tab.w ? Model.glyph("wind") + " " + Math.round(tab.w.current.wind) + (tab.w.units === "imperial" ? " mph" : " km/h") : ""
           }
+          PText {
+            visible: text !== ""
+            font.pixelSize: Style.font.bodySmall
+            tone: Qt.alpha(Color.popups.text, 0.65)
+            text: tab.w && tab.w.current.isDay ? Model.glyph("sun") + " UV " + Model.uvLabel(tab.w.current.uv) : ""
+          }
         }
       }
+
+      // Next eight hours: icon, temperature and chance of rain, spread across the width.
+      Item { visible: hourRow.hours.length > 0; width: 1; height: Style.space(6) }
+
+      Row {
+        id: hourRow
+        readonly property var hours: tab.w ? tab.w.hours.slice(0, 8) : []
+        visible: hours.length > 0
+        width: parent.width
+        Repeater {
+          model: hourRow.hours
+          Column {
+            required property var modelData
+            required property int index
+            width: col.width / hourRow.hours.length
+            spacing: Style.space(2)
+            PText {
+              width: parent.width
+              horizontalAlignment: Text.AlignHCenter
+              text: index === 0 ? "Now" : Qt.formatTime(new Date(modelData.time), "h AP")
+              font.pixelSize: Style.font.bodySmall
+              tone: Qt.alpha(Color.popups.text, 0.6)
+            }
+            PText {
+              width: parent.width
+              horizontalAlignment: Text.AlignHCenter
+              text: Model.glyph(Model.weatherInfo(modelData.code, modelData.isDay).icon)
+              font.pixelSize: Style.font.display
+            }
+            PText {
+              width: parent.width
+              horizontalAlignment: Text.AlignHCenter
+              text: Math.round(modelData.temp) + "°"
+              font.pixelSize: Style.font.bodySmall
+            }
+            PText {
+              width: parent.width
+              horizontalAlignment: Text.AlignHCenter
+              text: modelData.rain > 0 ? modelData.rain + "%" : ""
+              font.pixelSize: Style.font.bodySmall
+              tone: Color.accent
+            }
+          }
+        }
+      }
+
+      Rectangle { visible: hourRow.hours.length > 0; width: parent.width; height: 1; color: Qt.alpha(Color.popups.text, 0.1) }
 
       Row {
         visible: !!tab.w
@@ -130,6 +183,13 @@ Item {
               horizontalAlignment: Text.AlignHCenter
               text: Math.round(modelData.max) + "° / " + Math.round(modelData.min) + "°"
               font.pixelSize: Style.font.bodySmall
+            }
+            PText {
+              width: parent.width
+              horizontalAlignment: Text.AlignHCenter
+              text: modelData.rain > 0 ? modelData.rain + "%" : ""
+              font.pixelSize: Style.font.bodySmall
+              tone: Color.accent
             }
           }
         }

@@ -20,7 +20,7 @@ Item {
 
   SystemClock {
     precision: SystemClock.Minutes
-    onDateChanged: { root.nowMs = Date.now(); root.checkNotifications() }
+    onDateChanged: { root.nowMs = Date.now(); root.checkNotifications(); root.expireAlarms() }
   }
   // Seconds only matter while a timer is counting down.
   Timer {
@@ -51,7 +51,7 @@ Item {
   // ── Calendar ─────────────────────────────────────────────────────────────
   property var calendar: ({
     calendarSources: [], calendarSelection: [], calendarRefresh: 15,
-    hideAllDayEvents: false, autoScrollToNextEvent: true, showFullEventTitles: false, agendaDays: 1
+    hideAllDayEvents: false, autoScrollToNextEvent: true, showFullEventTitles: false, agendaDays: 1, alarms: []
   })
   property var sourceIds: []
   property var items: []
@@ -126,6 +126,7 @@ Item {
     helper("settings-get", {}, function (r) {
       applySettingsResult(r)
       loaded = true
+      syncAlarms()
       sync()
     })
   }
@@ -273,6 +274,73 @@ Item {
     timerSettle.restart()
     return true
   }
+  // A pomodoro is a chain of reminders (focus, break, focus, ...) queued up
+  // front, so it carries on without the shell.
+  function startPomodoro(cycles) {
+    var plan = Model.pomodoroPlan(cycles, 25, 5)
+    for (var i = 0; i < plan.length; ++i) if (!startTimer(plan[i].minutes, plan[i].label)) return false
+    return true
+  }
+
+  // ── Alarms (systemd user timers made by the helper) ──────────────────────
+  readonly property var alarms: calendar.alarms || []
+  property string clockView: "world"                   // world | alarm | stopwatch | timer
+  readonly property var nextAlarm: Model.soonestAlarm(alarms, new Date(nowMs))
+
+  function syncAlarms() {
+    helper("alarms-sync", {}, function (r) { applySettingsResult(r) }, 30)
+  }
+  // One-off alarms that went off are switched off by the helper.
+  function expireAlarms() {
+    if (loaded && Model.alarmsExpired(alarms, new Date())) syncAlarms()
+  }
+  function saveAlarms(list, cb) {
+    setCalendar({ alarms: list }, function (ok, r) {
+      if (ok) syncAlarms()
+      if (cb) cb(ok, r)
+    })
+  }
+  function copyAlarm(a, change) {
+    var c = {}
+    for (var k in a) c[k] = a[k]
+    for (var k2 in change) c[k2] = change[k2]
+    return c
+  }
+  function addAlarm(time, days, label) {
+    if (alarms.length >= 20 || Model.parseTimeInput(time) === "") return false
+    var list = alarms.slice()
+    list.push({ time: Model.parseTimeInput(time), days: days.slice(), label: label, enabled: true })
+    saveAlarms(list)
+    return true
+  }
+  function setAlarmEnabled(id, on) {
+    saveAlarms(alarms.map(function (a) {
+      if (a.id !== id) return a
+      var c = copyAlarm(a, { enabled: on })
+      delete c.date                      // a one-off picks its next day when it is switched on again
+      return c
+    }))
+  }
+  function removeAlarm(id) {
+    saveAlarms(alarms.filter(function (a) { return a.id !== id }))
+  }
+
+  // ── Stopwatch (lives here so it keeps running while the panel is closed) ──
+  property bool swRunning: false
+  property real swStartMs: 0
+  property real swBaseMs: 0
+  property var swLaps: []
+  function swElapsed(at) { return swBaseMs + (swRunning ? Math.max(0, at - swStartMs) : 0) }
+  function swToggle() {
+    if (swRunning) { swBaseMs = swElapsed(Date.now()); swRunning = false }
+    else { swStartMs = Date.now(); swRunning = true }
+  }
+  function swLap() {
+    if (swElapsed(Date.now()) <= 0 || swLaps.length >= 99) return
+    swLaps = swLaps.concat([swElapsed(Date.now())])
+  }
+  function swReset() { swRunning = false; swBaseMs = 0; swLaps = [] }
+
   function cancelTimer(unit) {
     if (!Model.validUnit(unit)) return false
     Quickshell.execDetached(["systemctl", "--user", "stop", unit + ".timer"])
