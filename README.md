@@ -92,6 +92,8 @@ on that source; redirects are re-checked against the same rules, the address act
 Event details (description, organizer, attendees) and the call link come straight from the feed; nothing is sent anywhere. Links are only opened when you click them, and only `http(s)` and `mailto:` are ever handed to the desktop.
 
 Sources and agenda options are stored in `~/.config/jgarza.tidepool/settings.json` (mode 0600).
+
+The bar widget's own options live in `shell.json`, and the shell rewrites that entry when the plugin is switched off and on. So a copy is kept in `~/.config/jgarza.tidepool/widget-settings.json` (mode 0600), refreshed whenever the options change; if the entry ever comes back with nothing in it, the widget restores them from that copy. To really reset to defaults, delete that file as well as the options in `shell.json`.
 *Import from Nookisle* copies sources from `~/.config/nookisle/settings.json`.
 
 ## Options

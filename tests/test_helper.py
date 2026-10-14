@@ -513,6 +513,25 @@ class HelperTest(unittest.TestCase):
             finally:
                 os.environ.pop("TIDEPOOL_CONFIG_DIR", None)
 
+    def test_widget_settings_backup(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.environ["TIDEPOOL_CONFIG_DIR"] = d
+            try:
+                self.assertEqual(h.widget_settings_get(), {"values": {}})
+                out = h.widget_settings_set({"values": {"id": "x", "clockMode": "both", "weatherCity": "Charlotte", "bad key": 1, "worldClocks": "A/B, C/D", "visualizers": ["bars", "fire"]}})
+                self.assertEqual(out["values"], {"clockMode": "both", "weatherCity": "Charlotte", "worldClocks": "A/B, C/D", "visualizers": ["bars", "fire"]})
+                self.assertEqual(h.widget_settings_get(), out)
+                # an empty save keeps the good copy
+                self.assertEqual(h.widget_settings_set({"values": {"id": "x"}}), {"values": {}})
+                self.assertEqual(h.widget_settings_get(), out)
+                with self.assertRaises(h.HelperError):
+                    h.widget_settings_set({"values": "no"})
+                with self.assertRaises(h.HelperError):
+                    h.widget_settings_set({"values": {"big": "x" * 40000}})
+                self.assertEqual(oct(os.stat(h.widget_settings_path()).st_mode & 0o777), "0o600")
+            finally:
+                os.environ.pop("TIDEPOOL_CONFIG_DIR", None)
+
     def test_weather_needs_city(self):
         with self.assertRaises(h.HelperError) as c:
             h.weather({"city": " "})

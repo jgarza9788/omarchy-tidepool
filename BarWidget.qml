@@ -191,9 +191,35 @@ BarWidget {
     persist({ clockMode: Model.CLOCK_MODES[(at + 1) % Model.CLOCK_MODES.length] })
   }
 
+  // ── Keeping the settings ──────────────────────────────────────────────────
+  // The shell rewrites this widget's entry in shell.json when the plugin is
+  // toggled off and on, which drops every option. A copy is kept in the
+  // plugin's own config folder; if the entry ever comes back with nothing but
+  // its id, the copy is put back.
+  function userSettings(source) {
+    var out = {}
+    var any = false
+    for (var key in source) if (key !== "id" && source[key] !== undefined && source[key] !== null) { out[key] = source[key]; any = true }
+    return any ? out : null
+  }
+  function backupSettings() {
+    var values = userSettings(root.settings)
+    if (values) store.helper("widget-settings-set", { values: values }, function () {}, 10)
+  }
+  function restoreSettings() {
+    if (userSettings(root.settings)) return backupSettings()
+    store.helper("widget-settings-get", {}, function (r) {
+      // Checked again now: the shell may have filled the entry in while we asked.
+      if (!r || !r.values || userSettings(root.settings)) return
+      var saved = userSettings(r.values)
+      if (saved) root.persist(saved)
+    }, 10)
+  }
+  Timer { id: backupSoon; interval: 800; onTriggered: root.backupSettings() }
+
   onBarChanged: injectPanel()
-  onSettingsChanged: injectPanel()
-  Component.onCompleted: shownNames = pageNames
+  onSettingsChanged: { injectPanel(); backupSoon.restart() }
+  Component.onCompleted: { shownNames = pageNames; restoreSettings() }
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight

@@ -173,6 +173,47 @@ def _settings_set_locked(args):
     return with_ids(cleaned)
 
 
+# ── Bar widget settings backup ───────────────────────────────────────────────
+# The widget's own options (clock mode, weather city, ...) live in shell.json,
+# which the shell rewrites when the plugin is toggled off and on. A copy kept
+# here lets the widget put them back if they come back empty.
+WIDGET_SETTINGS_MAX = 32 * 1024
+WIDGET_KEY_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,63}$")
+
+
+def widget_settings_path():
+    return os.path.join(config_dir(), "widget-settings.json")
+
+
+def clean_widget_settings(values):
+    if not isinstance(values, dict):
+        raise HelperError("bad request")
+    out = {k: v for k, v in values.items() if k != "id" and isinstance(k, str) and WIDGET_KEY_RE.match(k)}
+    try:
+        text = json.dumps(out)
+    except (TypeError, ValueError):
+        raise HelperError("bad request")
+    if len(text) > WIDGET_SETTINGS_MAX:
+        raise HelperError("too large")
+    return out
+
+
+def widget_settings_get(args=None):
+    data = read_json(widget_settings_path(), {})
+    try:
+        return {"values": clean_widget_settings(data.get("values") if isinstance(data, dict) else {})}
+    except HelperError:
+        return {"values": {}}
+
+
+def widget_settings_set(args):
+    values = clean_widget_settings(args.get("values"))
+    if not values:
+        return {"values": {}}      # never replace a good backup with an empty one
+    write_json(widget_settings_path(), {"version": 1, "values": values})
+    return {"values": values}
+
+
 def import_nookisle(args):
     """Copy calendar sources from ~/.config/nookisle/settings.json (sources only)."""
     path = args.get("path") or os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config"),
@@ -980,6 +1021,10 @@ def main(argv):
             _out(settings_set(args))
         elif cmd == "alarms-sync":
             _out(with_ids(alarms_sync(args)["values"]))
+        elif cmd == "widget-settings-get":
+            _out(widget_settings_get(args))
+        elif cmd == "widget-settings-set":
+            _out(widget_settings_set(args))
         elif cmd == "import-nookisle":
             _out(import_nookisle(args))
         elif cmd == "ids":
