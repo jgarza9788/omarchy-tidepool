@@ -106,7 +106,7 @@ Everything has a switch in the Settings window. They are also plain keys on the 
 | `showEvent` `showTimer` `showMedia` `showWeather` | `true` `true` `false` `false` | which extras appear |
 | `showMediaStatus`, `miniVisualizer` | `false` | play / pause icon on the media extra (it then stays while paused); a few live spectrum bars beside the track (needs `cava`) |
 | `visualizerStyle` | `bars` | `bars`, `mirror`, `dots` (a grid of translucent dots that swell and overlap with the sound), `wave`, `line`, `fire` (flickering pixel flames in the accent and its neighbouring colors) or `none` (visualizer off, and `cava` does not run): how the spectrum is drawn, in the Media tab and on the bar |
-| `visualizers` | `bars,mirror,wave,line` | which styles you can pick from (the style picker and the Media tab's switcher). `dots` and `fire` are heavy and start off; a heavy style you had already chosen stays on |
+| `visualizers` | `bars,mirror,wave,line` | which styles you can pick from (the style picker and the Media tab's switcher). `dots` and `fire` start off (a style you had already chosen stays on). They are drawn by a fragment shader on the GPU, so they are cheap; if the shader can't load they fall back to a slower CPU drawing |
 | `extrasShown` | `4` | how many extras at once (0 hides them and the divider) |
 | `extraStyle` | `plain` | `plain`, `border` or `button` |
 | `rotateSeconds` | `6` | seconds per page when extras swap |

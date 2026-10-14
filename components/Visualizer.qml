@@ -19,6 +19,10 @@ import "../Model.js" as Model
 //   none    off: nothing is drawn and cava is not started
 //   fire    digital fire: square cells that flicker, in the accent and the
 //           colours next to it on the wheel
+// dots and fire are drawn by a fragment shader (shaders/*.frag, compiled to
+// .qsb by shaders/build.sh), so a frame costs the GPU a pass over the box
+// instead of the CPU hundreds of rectangles. If a shader fails to load they
+// fall back to the rectangle versions.
 Item {
   id: viz
 
@@ -31,6 +35,7 @@ Item {
   property var values: []
   property int tick: 0                      // counts cava frames; drives the fire's flicker
   property bool available: true
+  property bool shaderOk: true                 // false draws dots and fire with plain rectangles instead of the shader
 
   readonly property bool barLike: styleName === "bars" || styleName === "mirror"
   readonly property real slotW: (width - (bars - 1) * gap) / bars
@@ -109,8 +114,24 @@ Item {
     readonly property var grid: Model.dotGrid(width, height, viz.bars)
     function band(i) { return viz.values.length > i ? viz.values[i] / 100 : 0 }
 
+    // One shader draws the whole grid on the GPU. If it can't load, the
+    // Repeater below draws the same thing with one Rectangle per dot.
+    SpectrumShader {
+      id: dotsFx
+      anchors.fill: parent
+      visible: dotsView.visible && viz.shaderOk && status !== ShaderEffect.Error
+      fragmentShader: Qt.resolvedUrl("../shaders/dots.frag.qsb")
+      values: viz.values
+      accent: Color.accent
+      property real cols: dotsView.grid.cols
+      property real rows: dotsView.grid.rows
+      property real pitchX: dotsView.grid.pitchX
+      property real pitchY: dotsView.grid.pitchY
+      property real dotSize: dotsView.grid.size
+    }
+
     Repeater {
-      model: dotsView.visible ? dotsView.grid.rows * dotsView.grid.cols : 0
+      model: dotsView.visible && !dotsFx.visible ? dotsView.grid.rows * dotsView.grid.cols : 0
       Rectangle {
         id: dot
         required property int index
@@ -150,7 +171,7 @@ Item {
     // so tongues are wider than one cell, licked up and down by noise.
     readonly property var heights: {
       var out = [], n = viz.bars, v = viz.values, g = grid
-      if (!visible) return out
+      if (!visible || fireFx.visible) return out
       for (var c = 0; c < n; ++c) {
         var a = (v.length > c ? v[c] : 0) / 100
         var l = (c > 0 && v.length > c - 1 ? v[c - 1] : 0) / 100
@@ -160,8 +181,23 @@ Item {
       return out
     }
 
+    SpectrumShader {
+      id: fireFx
+      anchors.fill: parent
+      visible: fireView.visible && viz.shaderOk && status !== ShaderEffect.Error
+      fragmentShader: Qt.resolvedUrl("../shaders/fire.frag.qsb")
+      values: viz.values
+      accent: Color.accent
+      property vector3d accHsl: Qt.vector3d(fireView.hue, fireView.sat, fireView.lig)
+      property real cols: fireView.grid.cols
+      property real rows: fireView.grid.rows
+      property real pitch: fireView.grid.pitch
+      property real cellSize: fireView.grid.size
+      property int tick: viz.tick
+    }
+
     Repeater {
-      model: fireView.visible ? fireView.grid.cols * fireView.grid.rows : 0
+      model: fireView.visible && !fireFx.visible ? fireView.grid.cols * fireView.grid.rows : 0
       Rectangle {
         required property int index
         readonly property int col: index % fireView.grid.cols

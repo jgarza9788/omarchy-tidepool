@@ -160,7 +160,7 @@
         "key": "visualizers",
         "type": "string",
         "label": "Available visualizers",
-        "description": "Comma-separated styles you can pick from: bars, mirror, dots, wave, line, fire. Dots and fire are heavy and start off. None is always available.",
+        "description": "Comma-separated styles you can pick from: bars, mirror, dots, wave, line, fire. Dots and fire are drawn by a shader on the GPU; they start off so a fresh setup looks the same as before. None is always available.",
         "defaultValue": "bars,mirror,wave,line"
       },
       {

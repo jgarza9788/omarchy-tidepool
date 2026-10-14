@@ -428,7 +428,7 @@ FloatingWindow {
           }
           SettingRow {
             label: "Dots"
-            description: "Heavy: draws hundreds of animated cells, so it uses noticeably more CPU than the others, on the bar as well as in the tab. Best left off on a laptop battery."
+            description: "Drawn on the GPU by a shader, so it is cheap. If shaders can't load it falls back to drawing hundreds of cells on the CPU, which is much heavier."
             warning: true
             Switch { checked: win.cfg.visualizers.indexOf("dots") >= 0; onToggled: win.setViz("dots", win.cfg.visualizers.indexOf("dots") < 0) }
           }
@@ -444,7 +444,7 @@ FloatingWindow {
           }
           SettingRow {
             label: "Fire"
-            description: "Heavy: draws hundreds of animated cells, so it uses noticeably more CPU than the others, on the bar as well as in the tab. Best left off on a laptop battery."
+            description: "Drawn on the GPU by a shader, so it is cheap. If shaders can't load it falls back to drawing hundreds of cells on the CPU, which is much heavier."
             warning: true
             Switch { checked: win.cfg.visualizers.indexOf("fire") >= 0; onToggled: win.setViz("fire", win.cfg.visualizers.indexOf("fire") < 0) }
           }
