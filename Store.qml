@@ -284,7 +284,6 @@ Item {
 
   // ── Alarms (systemd user timers made by the helper) ──────────────────────
   readonly property var alarms: calendar.alarms || []
-  property string clockView: "world"                   // world | alarm | stopwatch | timer
   readonly property var nextAlarm: Model.soonestAlarm(alarms, new Date(nowMs))
 
   function syncAlarms() {

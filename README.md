@@ -32,7 +32,10 @@ Tidepool started as a bar-resident, theme-colored take on the
 | Tab | |
 | --- | --- |
 | **Agenda** | Month grid and the day's events, or the next 3 / 7 / 14 / 30 days grouped by day. Events with a call link (Meet, Zoom, Teams, Webex…) get a **Join** button; click an event for its organizer, attendees and description. Buttons at the bottom open the web pages that go with the accounts you've added, in your default browser (Google: Calendar, Tasks and Gmail; Outlook: Calendar, To Do and Mail; iCloud: Calendar, Reminders and Mail; Fastmail: Calendar and Mail; Nextcloud: Calendar and Tasks), plus a Mail button for your mail app. |
-| **Clock** | A switcher at the top picks **World**, **Alarm**, **Stopwatch** or **Timer** (the iPhone's order). World: your world clocks, chosen in Settings. Alarm: a time of day with optional repeat days (or once), as systemd user timers that survive a shell restart and notify on their own. Stopwatch: start, lap and reset; it keeps running while the panel is closed, but not across a shell restart. Timer: presets, custom minutes and a pomodoro that can queue several focus/break cycles; they are real Omarchy reminders. |
+| **World** | Your world clocks, chosen in Settings. |
+| **Alarm** | A time of day with optional repeat days (or once), as systemd user timers that survive a shell restart and notify on their own. |
+| **Stopwatch** | Start, lap and reset; it keeps running while the panel is closed, but not across a shell restart. |
+| **Timer** | Presets, custom minutes and a pomodoro that can queue several focus/break cycles; they are real Omarchy reminders. |
 | **Media** | Whatever is playing, in any MPRIS app: art, seek bar, shuffle, repeat, volume, an app list and a live audio spectrum with a ‹ style › switcher in its corner. Clicking an app brings its window to the front (it works for terminal players, native apps and browsers). If the chosen app has nothing playing, the tab says so and keeps the app list so you can pick another. |
 | **Weather** | Current conditions and a 5-day forecast. |
 
@@ -130,7 +133,7 @@ Older names still work: the `showMusic` option, the `player` and `music` tab nam
 | Left click | open the panel (or the extra's own tab if you click an extra) |
 | Right click | cycle date / time / both |
 | Middle click | open the timezone picker |
-| `Tab` / `Shift+Tab`, `1`–`5` | switch tabs |
+| `Tab` / `Shift+Tab`, `1`–`7` | switch tabs |
 | `←` `→` · `[` `]` · `t` · `r` · `Esc` | agenda: day, month, today, sync; close |
 | Media tab: `space` `n` `p` `s` `r` `+` `-` `v` | play/pause, next, previous, shuffle, repeat, volume, next visualizer (`V` for previous) |
 
@@ -138,7 +141,7 @@ Shell commands:
 
 ```sh
 omarchy-shell jgarza.tidepool open|close|toggle|sync|cycleMode
-omarchy-shell jgarza.tidepool tab agenda|clock|media|weather   (also: clocks|alarm|stopwatch|timer, which open that view of Clock)
+omarchy-shell jgarza.tidepool tab agenda|clocks|alarm|stopwatch|timer|media|weather   (also: clock, alarms, timers)
 omarchy-shell jgarza.tidepool settings [section]
 omarchy-shell jgarza.tidepool app [name]        # make the Media tab follow an app; no name = automatic
 omarchy-shell jgarza.tidepool timer <minutes> <label>

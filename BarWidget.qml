@@ -147,9 +147,7 @@ BarWidget {
   }
   function openExtra(name) {
     var tab = extraTabs[name] || "agenda"
-    // The timer extra opens the Clock tab on its Timer view.
-    var landing = tab === "timer" ? "clock" : tab
-    if (opened && panelLoader.item && panelLoader.item.tab === landing && (landing !== "clock" || panelLoader.item.store.clockView === "timer")) close()
+    if (opened && panelLoader.item && panelLoader.item.tab === tab) close()
     else showTab(tab)
   }
   function showTab(name) { if (panelLoader.item) panelLoader.item.showTab(name) }

@@ -5,7 +5,7 @@
   "version": "0.2.0",
   "author": "jgarza",
   "license": "MIT",
-  "description": "A calm clock for the bar that grows into an agenda, a clock (world clocks, alarms, stopwatch, timers), media and weather. Bar-resident, theme-colored successor to the Nookisle island. Calendars: ICS files, calendar folders, iCal links (Google secret address) and CalDAV.",
+  "description": "A calm clock for the bar that grows into an agenda, world clocks, alarms, a stopwatch, timers, media and weather. Bar-resident, theme-colored successor to the Nookisle island. Calendars: ICS files, calendar folders, iCal links (Google secret address) and CalDAV.",
   "kinds": [
     "bar-widget"
   ],
@@ -14,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "Tidepool",
-    "description": "Clock with next-event chip, hover peek and an agenda/timers/media/weather panel.",
+    "description": "Clock with next-event chip, hover peek and an agenda/clocks/alarm/stopwatch/timer/media/weather panel.",
     "category": "Time",
     "allowMultiple": false,
     "defaultSection": "center",

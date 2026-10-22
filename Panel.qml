@@ -6,7 +6,7 @@ import "components"
 import "Model.js" as Model
 
 // The Tidepool panel: today's time and weather over a tide line of the day,
-// then Agenda, Clock (world clocks, alarm, stopwatch, timer), Media and Weather tabs. BarWidget.qml
+// then Agenda, World (clocks), Alarm, Stopwatch, Timer, Media and Weather tabs. BarWidget.qml
 // owns the bar face and hands this panel the button to anchor against and
 // the shared Store.
 Panel {
@@ -22,7 +22,10 @@ Panel {
 
   readonly property var tabs: [
     { id: "agenda", label: "Agenda", icon: "calendar" },
-    { id: "clock", label: "Clock", icon: "clock" },
+    { id: "clocks", label: "World", icon: "globe" },
+    { id: "alarm", label: "Alarm", icon: "alarm" },
+    { id: "stopwatch", label: "Stopwatch", icon: "clock" },
+    { id: "timer", label: "Timer", icon: "timer" },
     { id: "media", label: "Media", icon: "media" },
     { id: "weather", label: "Weather", icon: "sun" }
   ]
@@ -36,9 +39,9 @@ Panel {
     // Old tab names still work.
     if (name === "world") name = "weather"
     if (name === "player" || name === "music") name = "media"
-    // The old Timers and Clocks tabs are views inside Clock now.
-    var views = { clocks: "world", alarm: "alarm", alarms: "alarm", stopwatch: "stopwatch", timer: "timer", timers: "timer" }
-    if (views[name] !== undefined && views[name] !== "" && store) { store.clockView = views[name]; name = "clock" }
+    if (name === "clock") name = "clocks"
+    if (name === "alarms") name = "alarm"
+    if (name === "timers") name = "timer"
     for (var i = 0; i < tabs.length; ++i) if (tabs[i].id === name) { tab = name; break }
     open()
   }
@@ -84,9 +87,9 @@ Panel {
   function loadTab() {
     if (!store) return
     var props = { store: root.store }
-    if (tab === "clock" || tab === "media") props.host = root
+    if (tab === "clocks" || tab === "media") props.host = root
     tabLoader.setSource(Qt.resolvedUrl("components/" + {
-      agenda: "AgendaTab", clock: "ClockTab", media: "MediaTab", weather: "WeatherTab"
+      agenda: "AgendaTab", clocks: "ClocksTab", alarm: "AlarmTab", stopwatch: "StopwatchTab", timer: "TimerTab", media: "MediaTab", weather: "WeatherTab"
     }[tab] + ".qml"), props)
   }
   onTabChanged: loadTab()
@@ -103,7 +106,8 @@ Panel {
   readonly property color cardColor: Qt.tint(Color.bar.background, Qt.alpha(Color.bar.text, 0.07))
   readonly property var weather: store ? store.weather : null
   readonly property var badges: ({
-    clock: !!store && store.timers.length > 0,
+    stopwatch: !!store && store.swRunning,
+    timer: !!store && store.timers.length > 0,
     media: !!store && store.playing
   })
 
