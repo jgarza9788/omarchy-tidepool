@@ -41,6 +41,8 @@ Tidepool started as a bar-resident, theme-colored take on the
 
 A separate **Settings** window (the button after the tabs) holds every option. It has sections for the bar (Date & time, Bar extras, Appearance), one for each extra (Next event, Timer, Media, Weather), and for what the panel shows (Calendars, Agenda, World clocks). Bar extras holds the on/off switches for all the extras; each extra's own section starts with the same switch.
 
+The panel can be driven from the keyboard (Tab to the tabs and buttons, Enter or Space to press, the focus ring shows where you are) and tells screen readers what its tabs and buttons are. **Reduce motion** in Appearance (or turning Hyprland animations off) swaps the slides and springs for short fades and stops the pulsing dot.
+
 ## Requirements
 
 - Omarchy with the shell (`omarchy-shell`) and its plugin system.

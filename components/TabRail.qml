@@ -13,6 +13,7 @@ Item {
   property string current: ""
   property var badges: ({})
   property color cardColor: Color.bar.background
+  property bool reduceMotion: false
   readonly property real tabH: Style.space(36)
   readonly property real flare: Style.space(12)
   readonly property real padX: Style.space(12)
@@ -35,9 +36,11 @@ Item {
   property real bodyLeft: wantLeft
   property real bodyRight: wantRight
   property real flareLeft: firstActive ? 0 : flare
-  Behavior on bodyLeft { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
-  Behavior on bodyRight { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
-  Behavior on flareLeft { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+  // Springs, not fixed-time eases: a second click mid-slide re-aims the blob
+  // from where it is, keeping its speed, instead of restarting a curve.
+  Behavior on bodyLeft { enabled: !rail.reduceMotion; SpringAnimation { spring: 3.2; damping: 0.42; epsilon: 0.25 } }
+  Behavior on bodyRight { enabled: !rail.reduceMotion; SpringAnimation { spring: 3.2; damping: 0.42; epsilon: 0.25 } }
+  Behavior on flareLeft { enabled: !rail.reduceMotion; SpringAnimation { spring: 3.2; damping: 0.42; epsilon: 0.25 } }
 
   TabShape {
     x: rail.bodyLeft - rail.flareLeft
@@ -64,16 +67,31 @@ Item {
         width: label.implicitWidth + rail.padX * 2 + (index === 0 ? rail.flare : rail.flare * 2)
         height: rail.tabH
 
-        // Hover wash on inactive tabs.
+        // Keyboard: Tab reaches each tab, Enter / Space picks it.
+        activeFocusOnTab: true
+        Keys.onReturnPressed: rail.picked(t.modelData.id)
+        Keys.onEnterPressed: rail.picked(t.modelData.id)
+        Keys.onSpacePressed: rail.picked(t.modelData.id)
+        Accessible.role: Accessible.PageTab
+        Accessible.name: t.modelData.label
+        Accessible.description: rail.badges[t.modelData.id] ? "Active" : ""
+        Accessible.focusable: true
+        Accessible.focused: t.activeFocus
+        Accessible.selected: t.active
+        Accessible.onPressAction: rail.picked(t.modelData.id)
+
+        // Hover wash on inactive tabs; it answers the press at once, and a ring shows keyboard focus.
         Rectangle {
           x: index === 0 ? 0 : rail.flare
           y: Style.space(4)
           width: parent.width - rail.flare - x
           height: parent.height - Style.space(8)
           radius: Style.space(8)
-          color: Qt.alpha(Color.bar.text, 0.07)
-          opacity: !t.active && mouse.containsMouse ? 1 : 0
-          Behavior on opacity { NumberAnimation { duration: 140 } }
+          color: Qt.alpha(Color.bar.text, mouse.pressed ? 0.13 : 0.07)
+          border.width: t.activeFocus ? 1 : 0
+          border.color: Color.accent
+          opacity: t.activeFocus || (!t.active && mouse.containsMouse) ? 1 : 0
+          Behavior on opacity { NumberAnimation { duration: mouse.pressed ? 0 : 140 } }
         }
 
         Row {
@@ -124,14 +142,25 @@ Item {
     width: gearRow.implicitWidth + Style.space(20)
     height: rail.tabH
     readonly property bool hot: gearMouse.containsMouse
+    activeFocusOnTab: true
+    Keys.onReturnPressed: rail.settingsRequested()
+    Keys.onEnterPressed: rail.settingsRequested()
+    Keys.onSpacePressed: rail.settingsRequested()
+    Accessible.role: Accessible.Button
+    Accessible.name: "Settings"
+    Accessible.focusable: true
+    Accessible.focused: gear.activeFocus
+    Accessible.onPressAction: rail.settingsRequested()
 
     Rectangle {
       anchors.verticalCenter: parent.verticalCenter
       width: parent.width
       height: rail.tabH - Style.space(8)
       radius: Style.space(8)
-      color: Qt.alpha(Color.bar.text, gear.hot ? 0.1 : 0.05)
-      Behavior on color { ColorAnimation { duration: 140 } }
+      color: Qt.alpha(Color.bar.text, gearMouse.pressed ? 0.16 : gear.hot ? 0.1 : 0.05)
+      border.width: gear.activeFocus ? 1 : 0
+      border.color: Color.accent
+      Behavior on color { enabled: !gearMouse.pressed; ColorAnimation { duration: 140 } }
     }
     Row {
       id: gearRow
@@ -141,9 +170,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         text: Model.glyph("cog")
         font.pixelSize: Style.font.subtitle
-        tone: gear.hot ? Color.accent : Qt.alpha(Color.bar.text, 0.8)
-        rotation: gear.hot ? 60 : 0
-        Behavior on rotation { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
+        tone: gear.hot || gear.activeFocus ? Color.accent : Qt.alpha(Color.bar.text, 0.8)
         Behavior on tone { ColorAnimation { duration: 160 } }
       }
       PText {

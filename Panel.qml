@@ -96,7 +96,7 @@ Panel {
   onStoreChanged: loadTab()
   onOpenedChanged: {
     if (!store) return
-    if (opened) store.refreshTimers()
+    if (opened) { store.refreshTimers(); store.refreshMotion() }
     // The app picked in the Media tab only lasts while the panel is open, so the
     // bar goes back to showing whatever is actually playing.
     else store.preferredId = ""
@@ -122,6 +122,7 @@ Panel {
     owner: root.barIdentity
     bar: root.bar
     open: root.opened
+    reduceMotion: !!root.store && root.store.reduceMotion
     centerOnBar: true
     focusTarget: keyCatcher
     shellColor: Color.bar.background
@@ -216,6 +217,7 @@ Panel {
             current: root.tab
             badges: root.badges
             cardColor: root.cardColor
+            reduceMotion: !!root.store && root.store.reduceMotion
             onPicked: function (id) { root.tab = id }
             onSettingsRequested: root.openSettings()
           }
@@ -245,8 +247,8 @@ Panel {
               onLoaded: settle.restart()
               ParallelAnimation {
                 id: settle
-                NumberAnimation { target: tabLoader; property: "opacity"; from: 0; to: 1; duration: 220; easing.type: Easing.OutCubic }
-                NumberAnimation { target: shift; property: "x"; from: 18 * root.direction; to: 0; duration: 260; easing.type: Easing.OutCubic }
+                NumberAnimation { target: tabLoader; property: "opacity"; from: 0; to: 1; duration: root.store && root.store.reduceMotion ? 120 : 220; easing.type: Easing.OutCubic }
+                NumberAnimation { target: shift; property: "x"; from: root.store && root.store.reduceMotion ? 0 : 18 * root.direction; to: 0; duration: 260; easing.type: Easing.OutCubic }
               }
             }
           }

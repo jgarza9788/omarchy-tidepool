@@ -226,6 +226,13 @@
         "defaultValue": true
       },
       {
+        "key": "reduceMotion",
+        "type": "boolean",
+        "label": "Reduce motion",
+        "description": "Cross-fade instead of sliding, and stop the pulsing dot. Always on when Hyprland animations are off.",
+        "defaultValue": false
+      },
+      {
         "key": "rotateSeconds",
         "type": "integer",
         "label": "Swap every (s)",

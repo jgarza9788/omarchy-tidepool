@@ -50,7 +50,7 @@ var CLOCK_MODES = ["time", "date", "both"]
 var DEFAULTS = {
   clockMode: "time", showEvent: true, showTimer: true, showMedia: false, showWeather: false, extrasShown: 4, extraStyle: "plain", showMediaStatus: false, miniVisualizer: false, visualizerStyle: "bars",
   format: "HH:mm", dateFormat: "ddd d MMM", peekOnHover: true,
-  rotateSeconds: 6, soonMinutes: 15, notifyMinutes: 5, chipMaxChars: 22, chipHorizonHours: 12, tideLine: true, weatherCity: "", weatherLat: null, weatherLon: null, units: "metric",
+  rotateSeconds: 6, soonMinutes: 15, notifyMinutes: 5, chipMaxChars: 22, chipHorizonHours: 12, tideLine: true, reduceMotion: false, weatherCity: "", weatherLat: null, weatherLon: null, units: "metric",
   worldClocks: "", timerPresets: "5,15,25,45", weekStart: "monday"
 }
 
@@ -105,6 +105,7 @@ function resolveSettings(raw) {
   out.chipMaxChars = clamp(out.chipMaxChars, 8, 60, DEFAULTS.chipMaxChars)
   out.chipHorizonHours = clamp(out.chipHorizonHours, 1, 72, DEFAULTS.chipHorizonHours)
   out.tideLine = out.tideLine !== false && out.tideLine !== "false"
+  out.reduceMotion = out.reduceMotion === true || out.reduceMotion === "true"
   out.units = out.units === "imperial" ? "imperial" : "metric"
   out.weekStart = out.weekStart === "sunday" ? "sunday" : "monday"
   out.weatherCity = String(out.weatherCity || "").trim()

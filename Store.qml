@@ -48,6 +48,22 @@ Item {
     return colorMap[name] ? colorMap[name] : Color.accent
   }
 
+  // ── Motion ───────────────────────────────────────────────────────────────
+  // Reduced motion: the setting, or Hyprland's animations switched off.
+  property bool systemAnimations: true
+  readonly property bool reduceMotion: cfg.reduceMotion || !systemAnimations
+  function refreshMotion() { if (!motionRead.running) motionRead.running = true }
+  Process {
+    id: motionRead
+    command: ["hyprctl", "getoption", "animations:enabled", "-j"]
+    stdout: SplitParser {
+      splitMarker: ""
+      onRead: data => {
+        try { root.systemAnimations = JSON.parse(data).bool !== false } catch (e) { root.systemAnimations = true }
+      }
+    }
+  }
+
   // ── Calendar ─────────────────────────────────────────────────────────────
   property var calendar: ({
     calendarSources: [], calendarSelection: [], calendarRefresh: 15,
@@ -490,5 +506,6 @@ Item {
     refreshTimers()
     refreshWeather()
     refreshZones()
+    refreshMotion()
   }
 }

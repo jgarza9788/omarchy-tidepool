@@ -332,6 +332,11 @@ FloatingWindow {
             description: "A hairline under the widget that fills as the day passes."
             Switch { checked: win.cfg.tideLine; onToggled: win.set({ tideLine: !win.cfg.tideLine }) }
           }
+          SettingRow {
+            label: "Reduce motion"
+            description: "Cross-fade instead of sliding, and stop the pulsing dot. Always on when Hyprland animations are off."
+            Switch { checked: win.cfg.reduceMotion; onToggled: win.set({ reduceMotion: !win.cfg.reduceMotion }) }
+          }
         }
       }
 

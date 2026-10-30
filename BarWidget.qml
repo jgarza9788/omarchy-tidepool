@@ -314,7 +314,8 @@ BarWidget {
         width: Style.space(6); height: width; radius: width / 2
         color: Color.accent
         SequentialAnimation on opacity {
-          running: dot.visible
+          running: dot.visible && !store.reduceMotion
+          onRunningChanged: if (!running) dot.opacity = 1
           loops: Animation.Infinite
           NumberAnimation { from: 1; to: 0.25; duration: 900; easing.type: Easing.InOutSine }
           NumberAnimation { from: 0.25; to: 1; duration: 900; easing.type: Easing.InOutSine }

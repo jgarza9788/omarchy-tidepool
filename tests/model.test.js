@@ -76,6 +76,7 @@ ok("pages", M.extraPage(ex, 1, 1).join() === "timer" && M.extraPage(ex, 2, 1).jo
 ok("legacy fills only unset", M.resolveSettings({ face: "clock", showEvent: true }).showEvent === true);
 ok("legacy ignored when clockMode set", M.resolveSettings({ face: "clock", clockMode: "both" }).showEvent);
 ok("numbers clamp", s.rotateSeconds === 60 && s.soonMinutes === 1);
+ok("reduce motion", M.resolveSettings({}).reduceMotion === false && M.resolveSettings({ reduceMotion: "true" }).reduceMotion === true && M.resolveSettings({ reduceMotion: "no" }).reduceMotion === false);
 ok("horizon + tide defaults", M.resolveSettings({}).chipHorizonHours === 12 && M.resolveSettings({ tideLine: "false" }).tideLine === false);
 ok("units default", s.units === "metric");
 ok("presets parsed", s.timerPresets.join() === "5,15,25");

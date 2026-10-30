@@ -24,9 +24,10 @@ PanelWindow {
   readonly property bool horizontalBar: barPos === "top" || barPos === "bottom"
   readonly property real flare: horizontalBar ? Style.space(16) : 0
   readonly property real cornerRadius: Style.space(16)
+  property bool reduceMotion: false
   property real progress: open || popoutSwitching ? 1 : 0
   Behavior on progress {
-    NumberAnimation { duration: root.open ? 300 : 180; easing.type: root.open ? Easing.OutCubic : Easing.InCubic }
+    NumberAnimation { duration: root.reduceMotion ? 120 : root.open ? 300 : 180; easing.type: root.open ? Easing.OutCubic : Easing.InCubic }
   }
   property bool centerOnBar: false
   property bool open: false

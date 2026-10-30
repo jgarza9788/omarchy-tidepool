@@ -36,7 +36,13 @@ Rectangle {
   Keys.onSpacePressed: if (enabled) b.clicked()
   border.width: primary || activeFocus ? 1 : 0
   border.color: activeFocus ? Color.accent : Qt.alpha(Color.accent, 0.6)
-  Behavior on color { ColorAnimation { duration: 120 } }
+  // The fade is for hover; the press itself lands on the same frame.
+  Behavior on color { enabled: !mouse.pressed; ColorAnimation { duration: 120 } }
+  Accessible.role: Accessible.Button
+  Accessible.name: text !== "" ? text : tooltip
+  Accessible.focusable: enabled
+  Accessible.focused: activeFocus
+  Accessible.onPressAction: if (enabled) b.clicked()
 
   Row {
     id: row
