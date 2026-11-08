@@ -23,7 +23,9 @@ Tidepool started as a bar-resident, theme-colored take on the
 - Show 0–4 extras at once. If more are switched on than fit, they swap page by page with dots for
   the rest. Draw them plain, in a border, or as buttons.
 - Click an extra to open the panel on its own tab. A heads-up notification fires a few minutes
-  before each event, with the room and the call link.
+  before each event. It is deliberately generic ("Starts in 5 min"): the title, room and call link
+  stay in the panel, because notification text is passed as process arguments that other local
+  users can read.
 - A hairline under the widget fills as the day passes, with a tick for every event.
 - Hover for a peek at the next three events.
 

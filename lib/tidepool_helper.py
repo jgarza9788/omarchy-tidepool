@@ -887,13 +887,12 @@ def notify_due(args):
         mins = int((start - dt.datetime.now()).total_seconds() // 60) + 1
         if mins < 0 or mins > 120:
             continue
-        title = str(it.get("title") or "Event")[:120]
-        bits = ["Starting now" if mins <= 0 else "Starts in %d min" % mins]
-        if it.get("location"):
-            bits.append(str(it["location"])[:100])
-        if it.get("url"):
-            bits.append("Join: " + str(it["url"])[:200])
-        if send_notification(title, "\n".join(bits)):
+        # Privacy: notify-send gets its text as process arguments, which other
+        # local users can read. Keep event title, location and join links out
+        # of it; the details stay in the panel.
+        title = "Calendar event"
+        body = "Starting now" if mins <= 0 else "Starts in %d min" % mins
+        if send_notification(title, body):
             seen[key] = now
             sent += 1
     write_json(path, seen)

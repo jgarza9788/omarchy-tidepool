@@ -13,6 +13,8 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
 import tidepool_helper as h  # noqa: E402
 
+_real_send = h.send_notification
+
 
 def ics_for(day, summary="Standup", start="090000", end="093000"):
     d = day.strftime("%Y%m%d")
@@ -186,11 +188,29 @@ class HelperTest(unittest.TestCase):
         items = [{"key": "k1", "title": "Standup", "start": soon, "location": "Room 4", "url": "https://zoom.us/j/1"},
                  {"key": "k2", "title": "Later", "start": far}]
         self.assertEqual(h.notify_due({"items": items})["sent"], 1)
-        self.assertEqual(sent[0][0], "Standup")
-        self.assertIn("Room 4", sent[0][1])
-        self.assertIn("Join: https://zoom.us/j/1", sent[0][1])
+        self.assertEqual(sent[0][0], "Calendar event")
+        self.assertRegex(sent[0][1], r"^Starts in \d+ min$")
+        for private in ("Standup", "Room 4", "zoom.us"):
+            self.assertNotIn(private, sent[0][0] + sent[0][1])
         self.assertEqual(h.notify_due({"items": items})["sent"], 0)   # not twice
         self.assertEqual(len(sent), 1)
+
+    def test_notification_argv_has_no_private_details(self):
+        calls = []
+        real = h.subprocess.run
+        h.subprocess.run = lambda cmd, *a, **k: calls.append(list(cmd))
+        try:
+            soon = (dt.datetime.now() + dt.timedelta(minutes=4)).strftime("%Y-%m-%dT%H:%M:%S")
+            item = {"key": "argv1", "title": "SECRET-TITLE", "start": soon,
+                    "location": "SECRET-PLACE", "url": "https://zoom.us/j/SECRET-JOIN"}
+            h.send_notification = _real_send
+            h.notify_due({"items": [item]})
+        finally:
+            h.subprocess.run = real
+        self.assertEqual(len(calls), 1)
+        joined = " ".join(calls[0])
+        for private in ("SECRET-TITLE", "SECRET-PLACE", "SECRET-JOIN"):
+            self.assertNotIn(private, joined)
 
     def test_ancestors_walk_up_and_stop(self):
         tree = {900: 800, 800: 700, 700: 1, 5: 5}
