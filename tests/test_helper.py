@@ -262,6 +262,17 @@ class HelperTest(unittest.TestCase):
         finally:
             h._run = orig
 
+    def test_open_url_validates_and_keeps_the_url_out_of_errors(self):
+        seen = []
+        ok = h.open_url({"url": "https://meet.example.com/j/1?pwd=SECRET"}, lambda u: seen.append(u) or True)
+        self.assertTrue(ok["ok"]); self.assertEqual(len(seen), 1)
+        self.assertTrue(h.open_url({"url": "mailto:"}, lambda u: True)["ok"])
+        for bad in ("file:///etc/passwd", "https://a b/", "https://user@host/", "javascript:1", "https://x/" + "a" * 2000):
+            self.assertIn("error", h.open_url({"url": bad}, lambda u: seen.append(u) or True), bad)
+        self.assertEqual(len(seen), 1)
+        def boom(u): raise RuntimeError("SECRET")
+        self.assertNotIn("SECRET", json.dumps(h.open_url({"url": "https://a.com/SECRET"}, boom)))
+
     def test_loopback_only_when_the_request_started_there(self):
         # a public server must not be able to redirect us to a service on this machine
         for url in ("https://localhost/x", "http://127.0.0.1:8080/x", "http://[::1]/x"):

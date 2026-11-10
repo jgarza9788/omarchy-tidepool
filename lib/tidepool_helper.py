@@ -965,6 +965,26 @@ def _run(cmd, timeout=4):
         return None
 
 
+_OPEN_URL_RE = re.compile(r"^(https?://[^/@\s]+(/|$)|mailto:[^\s@]+@[^\s@]+$|mailto:$)", re.I)
+
+
+def open_url(args, _launch=None):
+    """Open a link in the default app. The URL arrives on stdin and goes over D-Bus,
+    so it never sits in our own (world-readable) process arguments."""
+    url = str(args.get("url", "")).strip()
+    if len(url) > 2000 or re.search(r"[\x00-\x20\x7f]", url) or not _OPEN_URL_RE.match(url):
+        return {"error": "bad url"}
+    try:
+        if _launch is None:
+            import gi
+            gi.require_version("Gio", "2.0")
+            from gi.repository import Gio
+            _launch = lambda u: Gio.AppInfo.launch_default_for_uri(u, None)
+        return {"ok": True} if _launch(url) else {"error": "no handler"}
+    except Exception:
+        return {"error": "could not open the link"}
+
+
 def focus_app(args):
     """Bring the window of a media app (an MPRIS player) to the front."""
     name = str(args.get("dbusName", ""))
@@ -1038,6 +1058,8 @@ def main(argv):
             _out(weather(args))
         elif cmd == "notify-due":
             _out(notify_due(args))
+        elif cmd == "open-url":
+            _out(open_url(args))
         elif cmd == "focus-app":
             _out(focus_app(args))
         elif cmd == "search-zones":

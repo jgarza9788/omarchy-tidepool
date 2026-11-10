@@ -447,10 +447,11 @@ Item {
       desktopEntry: player.desktopEntry || "", title: player.trackTitle || "" }, function () {}, 10)
   }
 
-  // Open a web or mail link in the default browser / mail app.
+  // Open a web or mail link in the default browser / mail app. The URL goes to the
+  // helper on stdin, not on a command line other local users could read.
   function openUrl(url) {
     var safe = Model.safeUrl(url)
-    if (safe !== "") Quickshell.execDetached(["xdg-open", safe])
+    if (safe !== "") helper("open-url", { url: safe }, function () {}, 10)
   }
 
   // ── Helper process plumbing ──────────────────────────────────────────────
