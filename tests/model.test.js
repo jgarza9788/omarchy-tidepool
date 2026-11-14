@@ -68,6 +68,7 @@ ok("wave path stays inside the box", (() => { const n = nums(wild); const xs = n
 ok("closed wave ends on the baseline", /L60 30 L0 30 Z$/.test(wild));
 ok("wave path clamps bad input", /^M0 40/.test(M.wavePath([-50, 500, "x"], 20, 40, false)) && !/NaN/.test(M.wavePath([NaN, undefined, null], 20, 40, true)));
 ok("wave path with nothing is a flat baseline", M.wavePath([], 50, 10, false) === "M0 10 L50 10" && M.wavePath(null, 50, 10, true).endsWith("Z"));
+ok("panel style", M.resolveSettings({}).panelStyle === "attached" && M.resolveSettings({ panelStyle: "floating" }).panelStyle === "floating" && M.resolveSettings({ panelStyle: "x" }).panelStyle === "attached");
 ok("extra style", M.resolveSettings({}).extraStyle === "plain" && M.resolveSettings({ extraStyle: "border" }).extraStyle === "border" && M.resolveSettings({ extraStyle: "button" }).extraStyle === "button" && M.resolveSettings({ extraStyle: "neon" }).extraStyle === "plain");
 ok("extrasShown clamps", M.resolveSettings({ extrasShown: 9 }).extrasShown === 4 && M.resolveSettings({ extrasShown: -1 }).extrasShown === 0 && M.resolveSettings({ extrasShown: 0 }).extrasShown === 0);
 const ex = ["event", "timer", "media", "weather"];
@@ -82,6 +83,10 @@ ok("units default", s.units === "metric");
 ok("presets parsed", s.timerPresets.join() === "5,15,25");
 ok("zones validated", s.worldClocks.join() === "Asia/Tokyo,Europe/London");
 ok("empty presets default", M.parsePresets("").join() === "5,15,25,45");
+ok("openOnHover defaults off", M.resolveSettings({}).openOnHover === false);
+ok("openOnHover string true", M.resolveSettings({ openOnHover: "true" }).openOnHover === true);
+ok("hoverDelay default", M.resolveSettings({}).hoverDelay === 160);
+ok("hoverDelay clamps", M.resolveSettings({ hoverDelay: 9999 }).hoverDelay === 600 && M.resolveSettings({ hoverDelay: -5 }).hoverDelay === 0);
 ok("peekOnHover string false", M.resolveSettings({ peekOnHover: "false" }).peekOnHover === false);
 
 // day rows

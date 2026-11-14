@@ -65,6 +65,10 @@ Panel {
     close()
     if (hostWidget && typeof hostWidget.openSettings === "function") hostWidget.openSettings(section || "datetime")
   }
+  // Pointer over the widget or the card (the overlay hides the widget's own hover).
+  readonly property bool pointerInside: panel.pointerInside
+  // The pointer is on the widget right now, even though it has not moved since the overlay appeared.
+  function seedAnchorHover() { panel.anchorHovered = true }
   function toggle() { if (root.opened) root.close(); else root.open() }
 
   function switchPanel(direction) {
@@ -123,8 +127,12 @@ Panel {
     bar: root.bar
     open: root.opened
     reduceMotion: !!root.store && root.store.reduceMotion
+    attached: !(root.store && root.store.floatingPanel)
     centerOnBar: true
     focusTarget: keyCatcher
+    // A hover-opened panel takes no keyboard until it is pinned by a click.
+    softFocus: !!root.hostWidget && root.hostWidget.hoverOpened === true
+    onPressedInside: if (root.hostWidget && typeof root.hostWidget.pinHover === "function") root.hostWidget.pinHover()
     shellColor: Color.bar.background
     contentWidth: panel.fittedContentWidth(Style.space(880))
     contentHeight: panel.fittedContentHeight(Style.space(580))

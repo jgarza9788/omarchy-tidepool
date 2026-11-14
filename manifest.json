@@ -27,6 +27,8 @@
       "format": "HH:mm",
       "dateFormat": "ddd d MMM",
       "peekOnHover": true,
+      "openOnHover": false,
+      "hoverDelay": 160,
       "tideLine": true,
       "rotateSeconds": 6,
       "soonMinutes": 15,
@@ -39,6 +41,7 @@
       "timerPresets": "5,15,25,45",
       "extrasShown": 4,
       "extraStyle": "plain",
+      "panelStyle": "attached",
       "notifyMinutes": 5,
       "showMediaStatus": false,
       "miniVisualizer": false,
@@ -198,6 +201,25 @@
         ]
       },
       {
+        "key": "panelStyle",
+        "type": "enum",
+        "label": "Panel",
+        "description": "Whether the open panel is attached to the bar or floats just off it.",
+        "defaultValue": "attached",
+        "options": [
+          {
+            "value": "attached",
+            "label": "Attached",
+            "description": "A tab that grows out of the bar."
+          },
+          {
+            "value": "floating",
+            "label": "Not attached",
+            "description": "A separate rounded card with a gap from the bar."
+          }
+        ]
+      },
+      {
         "key": "format",
         "type": "string",
         "label": "Time format",
@@ -217,6 +239,22 @@
         "label": "Hover peek",
         "description": "Show the next three events when hovering.",
         "defaultValue": true
+      },
+      {
+        "key": "openOnHover",
+        "type": "boolean",
+        "label": "Open panel on hover",
+        "description": "Hovering the widget opens the full panel instead of the peek. Click to keep it open.",
+        "defaultValue": false
+      },
+      {
+        "key": "hoverDelay",
+        "type": "integer",
+        "label": "Hover delay",
+        "description": "Milliseconds to rest on the widget before the panel opens.",
+        "defaultValue": 160,
+        "min": 0,
+        "max": 600
       },
       {
         "key": "tideLine",

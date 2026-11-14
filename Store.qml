@@ -52,6 +52,7 @@ Item {
   // Reduced motion: the setting, or Hyprland's animations switched off.
   property bool systemAnimations: true
   readonly property bool reduceMotion: cfg.reduceMotion || !systemAnimations
+  readonly property bool floatingPanel: cfg.panelStyle === "floating"
   function refreshMotion() { if (!motionRead.running) motionRead.running = true }
   Process {
     id: motionRead

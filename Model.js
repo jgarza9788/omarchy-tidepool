@@ -46,10 +46,11 @@ function vizStep(style, delta, choices) {
   return list[(((at + delta) % n) + n) % n]
 }
 var EXTRA_STYLES = ["plain", "border", "button"]
+var PANEL_STYLES = ["attached", "floating"]
 var CLOCK_MODES = ["time", "date", "both"]
 var DEFAULTS = {
-  clockMode: "time", showEvent: true, showTimer: true, showMedia: false, showWeather: false, extrasShown: 4, extraStyle: "plain", showMediaStatus: false, miniVisualizer: false, visualizerStyle: "bars",
-  format: "HH:mm", dateFormat: "ddd d MMM", peekOnHover: true,
+  clockMode: "time", showEvent: true, showTimer: true, showMedia: false, showWeather: false, extrasShown: 4, extraStyle: "plain", panelStyle: "attached", showMediaStatus: false, miniVisualizer: false, visualizerStyle: "bars",
+  format: "HH:mm", dateFormat: "ddd d MMM", peekOnHover: true, openOnHover: false, hoverDelay: 160,
   rotateSeconds: 6, soonMinutes: 15, notifyMinutes: 5, chipMaxChars: 22, chipHorizonHours: 12, tideLine: true, reduceMotion: false, weatherCity: "", weatherLat: null, weatherLon: null, units: "metric",
   worldClocks: "", timerPresets: "5,15,25,45", weekStart: "monday"
 }
@@ -91,6 +92,8 @@ function resolveSettings(raw) {
   var flags = ["showEvent", "showTimer", "showMedia", "showWeather"]
   for (var f = 0; f < flags.length; ++f) out[flags[f]] = out[flags[f]] !== false && out[flags[f]] !== "false"
   out.peekOnHover = out.peekOnHover !== false && out.peekOnHover !== "false"
+  out.openOnHover = out.openOnHover === true || out.openOnHover === "true"
+  out.hoverDelay = clamp(out.hoverDelay, 0, 600, DEFAULTS.hoverDelay)
   out.showMediaStatus = out.showMediaStatus === true || out.showMediaStatus === "true"
   out.miniVisualizer = out.miniVisualizer === true || out.miniVisualizer === "true"
   if (VIZ_STYLES.indexOf(out.visualizerStyle) < 0) out.visualizerStyle = DEFAULTS.visualizerStyle
@@ -98,6 +101,7 @@ function resolveSettings(raw) {
   out.vizChoices = vizChoices(out.visualizers)
   if (out.vizChoices.indexOf(out.visualizerStyle) < 0) out.visualizerStyle = out.vizChoices[0]     // a style that was switched off
   if (EXTRA_STYLES.indexOf(out.extraStyle) < 0) out.extraStyle = DEFAULTS.extraStyle
+  if (PANEL_STYLES.indexOf(out.panelStyle) < 0) out.panelStyle = DEFAULTS.panelStyle
   out.extrasShown = clamp(out.extrasShown, 0, 4, DEFAULTS.extrasShown)
   out.rotateSeconds = clamp(out.rotateSeconds, 2, 60, DEFAULTS.rotateSeconds)
   out.notifyMinutes = clamp(out.notifyMinutes, 0, 60, DEFAULTS.notifyMinutes)
@@ -841,7 +845,7 @@ function zoneCity(zone) {
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
-    loopNext: loopNext, parseBars: parseBars, glyph: glyph, GLYPH: GLYPH, DEFAULTS: DEFAULTS, CLOCK_MODES: CLOCK_MODES, VIZ_STYLES: VIZ_STYLES, VIZ_HEAVY: VIZ_HEAVY, VIZ_DEFAULT_ON: VIZ_DEFAULT_ON, parseVisualizers: parseVisualizers, vizChoices: vizChoices, vizLabel: vizLabel, vizStep: vizStep, wavePath: wavePath, cellGrid: cellGrid, gridRows: gridRows, noise: noise, fireHeight: fireHeight, fireState: fireState, fireHsl: fireHsl, dotGrid: dotGrid, dotLevel: dotLevel, dotScale: dotScale, EXTRA_STYLES: EXTRA_STYLES, parseColors: parseColors, resolveSettings: resolveSettings, parsePresets: parsePresets, parseZones: parseZones,
+    loopNext: loopNext, parseBars: parseBars, glyph: glyph, GLYPH: GLYPH, DEFAULTS: DEFAULTS, CLOCK_MODES: CLOCK_MODES, VIZ_STYLES: VIZ_STYLES, VIZ_HEAVY: VIZ_HEAVY, VIZ_DEFAULT_ON: VIZ_DEFAULT_ON, parseVisualizers: parseVisualizers, vizChoices: vizChoices, vizLabel: vizLabel, vizStep: vizStep, wavePath: wavePath, cellGrid: cellGrid, gridRows: gridRows, noise: noise, fireHeight: fireHeight, fireState: fireState, fireHsl: fireHsl, dotGrid: dotGrid, dotLevel: dotLevel, dotScale: dotScale, EXTRA_STYLES: EXTRA_STYLES, PANEL_STYLES: PANEL_STYLES, parseColors: parseColors, resolveSettings: resolveSettings, parsePresets: parsePresets, parseZones: parseZones,
     startOfDay: startOfDay, addDays: addDays, sameDay: sameDay, clock: clock, dayKey: dayKey, span: span, onDay: onDay,
     itemsForDay: itemsForDay, agendaGroups: agendaGroups, agendaTitle: agendaTitle, scrollTarget: scrollTarget, upcoming: upcoming, minutesLabel: minutesLabel, ellipsize: ellipsize,
     chip: chip, whenLabel: whenLabel, timeLabel: timeLabel, extrasFor: extrasFor, extraPageCount: extraPageCount, extraPage: extraPage, clockParts: clockParts, monthGrid: monthGrid, weekdayHeaders: weekdayHeaders, dotsForDay: dotsForDay, dueNotifications: dueNotifications, safeUrl: safeUrl, attendeeSummary: attendeeSummary,

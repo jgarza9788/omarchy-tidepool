@@ -19,19 +19,49 @@ PanelWindow {
   property int padding: Style.space(14)
   property int contentWidth: Style.space(280)
   property int contentHeight: Style.space(200)
+  property bool attached: true
   property color shellColor: Color.bar.background
   property color edgeColor: Qt.alpha(Color.bar.text, 0.14)
   readonly property bool horizontalBar: barPos === "top" || barPos === "bottom"
-  readonly property real flare: horizontalBar ? Style.space(16) : 0
+  readonly property real flare: horizontalBar && attached ? Style.space(16) : 0
   readonly property real cornerRadius: Style.space(16)
   property bool reduceMotion: false
+  // Reduced motion only: a plain fade of the tab, as before.
   property real progress: open || popoutSwitching ? 1 : 0
   Behavior on progress {
     NumberAnimation { duration: root.reduceMotion ? 120 : root.open ? 300 : 180; easing.type: root.open ? Easing.OutCubic : Easing.InCubic }
   }
+
+  // The tab grows out of the bar on springs, like the island plugins do: a
+  // spring keeps its velocity when the target flips, so a quick in-and-out
+  // bends the motion instead of restarting it. Opening is loose with a little
+  // wobble (width softer than height, so it stretches before it widens);
+  // closing is stiff and barely overshoots.
+  readonly property real closedWidth: Math.max(anchorW, Style.space(72))
+  property real springW: open || popoutSwitching ? contentWidth : closedWidth
+  property real springH: open || popoutSwitching ? contentHeight : 0
+  Behavior on springW {
+    enabled: !root.reduceMotion
+    SpringAnimation { spring: root.open ? 3.8 : 6.5; damping: root.open ? 0.36 : 0.6; mass: 1; epsilon: 0.25 }
+  }
+  Behavior on springH {
+    enabled: !root.reduceMotion
+    SpringAnimation { spring: root.open ? 4.4 : 7.5; damping: root.open ? 0.38 : 0.65; mass: 1; epsilon: 0.25 }
+  }
+  // A spring can undershoot below zero on the way home.
+  readonly property real bodyW: reduceMotion ? contentWidth : Math.max(0, springW)
+  readonly property real bodyH: reduceMotion ? contentHeight : Math.max(0, springH)
+
+  // Hover opening: the panel was opened by resting on the widget, so it takes
+  // no keyboard focus (and closes when the pointer leaves) until it is pinned.
+  property bool softFocus: false
+  property bool anchorHovered: false
+  readonly property bool cardHovered: cardHover.hovered
+  readonly property bool pointerInside: anchorHovered || cardHovered
+  signal pressedInside()
   property bool centerOnBar: false
   property bool open: false
-  property int gap: 0  // the tab sits flush on the bar
+  property int gap: attached ? 0 : Style.space(8)  // attached: flush on the bar; otherwise a small gap
   property bool popoutSwitching: false
   property bool popoutSwitchClosing: false
   property bool focusPrimed: false
@@ -62,7 +92,7 @@ PanelWindow {
   // --- screen + lifetime ---------------------------------------------------
 
   screen: anchorWindow ? anchorWindow.screen : null
-  visible: open || progress > 0 || popoutSwitching
+  visible: open || progress > 0 || popoutSwitching || springH > 0.5
   color: "transparent"
   exclusionMode: ExclusionMode.Ignore
 
@@ -80,10 +110,19 @@ PanelWindow {
   // The brief prime covers both cases; OnDemand then releases compositor-wide
   // pointer hit-testing so clicks can reach the dismissal windows below.
   WlrLayershell.keyboardFocus: open
-    ? (focusPrimed ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive)
+    ? (softFocus ? WlrKeyboardFocus.None : focusPrimed ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive)
     : WlrKeyboardFocus.None
 
   onBackingWindowVisibleChanged: beginFocusPrime()
+  // Pinned: take the keyboard the way a click-opened panel does.
+  onSoftFocusChanged: {
+    if (softFocus || !open) return
+    focusPrimed = false
+    beginFocusPrime()
+    if (focusTarget) Qt.callLater(function() {
+      if (root.open && root.focusTarget) root.focusTarget.forceActiveFocus()
+    })
+  }
 
   // Full-screen layer-shell. The visible card is positioned inside via
   // `cardOrigin`. The `mask` below makes the bar area click-through (so
@@ -173,8 +212,12 @@ PanelWindow {
   // parallel axis (along the bar) the anchor item's reported position is
   // still consistent with the bar content origin, so it's accurate for
   // centering the card under the icon.
-  readonly property real barW: anchorWindow ? anchorWindow.width : screenW
-  readonly property real barH: anchorWindow ? anchorWindow.height : 0
+  // The bar surface can be a full-screen layer (with an input mask) rather than
+  // a strip, so its window size is not the bar thickness; never exceed barSize.
+  readonly property real barW: anchorWindow
+    ? (bar && bar.barSize > 0 && !horizontalBar ? Math.min(anchorWindow.width, bar.barSize) : anchorWindow.width) : screenW
+  readonly property real barH: anchorWindow
+    ? (bar && bar.barSize > 0 && horizontalBar ? Math.min(anchorWindow.height, bar.barSize) : anchorWindow.height) : 0
   readonly property point cardOrigin: {
     if (!anchorItem || !bar) return Qt.point(margin, margin)
     var x = 0, y = 0
@@ -208,6 +251,7 @@ PanelWindow {
   // Coordinate on `open`, not `visible`. `visible` lags into the fade-out
   // animation, which made ownership transfer to a sibling popup race.
   onOpenChanged: {
+    if (!open) anchorHovered = false
     if (open) {
       focusPrimed = false
       beginFocusPrime()
@@ -308,13 +352,24 @@ PanelWindow {
       return true
     }
 
-    onPositionChanged: function(mouse) { hoveringBar = inBarRegion(mouse.x, mouse.y) }
-    onExited: hoveringBar = false
+    // Is the pointer over the widget? The overlay covers the bar, so the
+    // widget's own hover is gone while the panel is open; judge by position.
+    function overAnchor(px, py) {
+      if (!inBarRegion(px, py)) return false
+      if (root.horizontalBar) return px >= root.anchorScreenPos.x && px <= root.anchorScreenPos.x + root.anchorW
+      return py >= root.anchorScreenPos.y && py <= root.anchorScreenPos.y + root.anchorH
+    }
+
+    onPositionChanged: function(mouse) {
+      hoveringBar = inBarRegion(mouse.x, mouse.y)
+      root.anchorHovered = overAnchor(mouse.x, mouse.y)
+    }
+    onExited: { hoveringBar = false; root.anchorHovered = false }
     onClicked: function(mouse) {
       // While Exclusive is priming, Hyprland may route a click from another
       // output here with translated coordinates. Never interpret that as a
       // click on this output's bar.
-      if (root.focusPrimed && inBarRegion(mouse.x, mouse.y) && forwardBarClick(mouse.x, mouse.y, mouse.button)) return
+      if ((root.focusPrimed || root.softFocus) && inBarRegion(mouse.x, mouse.y) && forwardBarClick(mouse.x, mouse.y, mouse.button)) return
       root.close()
     }
   }
@@ -363,26 +418,43 @@ PanelWindow {
 
   // --- card ----------------------------------------------------------------
 
-  // Clip at the bar edge: the tab slides up out of the bar and back into it.
+  // The card is the final-size frame (hover and the mask are judged against
+  // it, so they never shrink mid-animation). `body` is what you see: it grows
+  // out of the bar edge over content that stays at its final size, so the
+  // content is uncovered rather than scaled.
   Item {
     id: card
     x: root.cardOrigin.x - root.flare
-    y: root.barPos === "top" ? root.cardOrigin.y - 1 : root.cardOrigin.y
+    y: root.barPos === "top" && root.attached ? root.cardOrigin.y - 1 : root.cardOrigin.y
     width: root.contentWidth + root.flare * 2
     height: root.contentHeight + 1
-    clip: true
+
+    HoverHandler { id: cardHover }
 
     Item {
-      id: slide
-      width: parent.width
-      height: root.contentHeight
-      y: (root.barPos === "top" ? -1 : 1) * (1 - root.progress) * Math.min(root.contentHeight, Style.space(56))
-        + (root.barPos === "top" ? 1 : 0)
-      opacity: Math.min(1, root.progress * 1.6)
+      id: body
+      width: root.flare * 2 + root.bodyW
+      height: root.bodyH
+      clip: true
+      x: root.horizontalBar ? (card.width - width) / 2 : (root.barPos === "left" ? 0 : card.width - width)
+      y: root.barPos === "top" ? 1
+        : root.barPos === "bottom" ? root.contentHeight - height
+        : (card.height - height) / 2
+      opacity: root.reduceMotion ? Math.min(1, root.progress * 1.6) : 1
+
+      Rectangle {
+        visible: !root.attached
+        anchors.fill: parent
+        radius: root.cornerRadius
+        color: root.shellColor
+        border.width: 1
+        border.color: root.edgeColor
+      }
 
       TabShape {
+        visible: root.attached
         anchors.fill: parent
-        bodyWidth: root.contentWidth
+        bodyWidth: root.bodyW
         flareLeft: root.flare
         flareRight: root.flare
         radius: root.cornerRadius
@@ -394,21 +466,25 @@ PanelWindow {
       // Swallow clicks on the tab so they don't reach the dismissal area.
       MouseArea {
         x: root.flare
-        width: root.contentWidth
+        width: Math.max(0, parent.width - root.flare * 2)
         height: parent.height
         acceptedButtons: Qt.AllButtons
+        onPressed: root.pressedInside()
       }
 
       Item {
         id: contentHolder
-        x: root.flare + root.padding
-        y: root.padding
         width: root.contentWidth - root.padding * 2
         height: root.contentHeight - root.padding * 2
-        opacity: root.popoutSwitching ? (root.open ? 1.0 : 0) : 1.0
+        x: root.horizontalBar ? (body.width - root.contentWidth) / 2 + root.padding
+          : root.barPos === "left" ? root.padding : body.width - root.contentWidth + root.padding
+        y: root.barPos === "bottom" ? body.height - root.contentHeight + root.padding
+          : root.horizontalBar ? root.padding
+          : (body.height - root.contentHeight) / 2 + root.padding
+        // Content appears once the body is about half grown.
+        opacity: root.open && (root.reduceMotion || root.bodyH > root.contentHeight * 0.45) ? 1 : 0
         Behavior on opacity {
-          enabled: root.popoutSwitching
-          NumberAnimation { duration: 140; easing.type: Easing.OutCubic }
+          NumberAnimation { duration: root.reduceMotion ? 120 : root.open ? 80 : 140; easing.type: Easing.OutCubic }
         }
       }
     }

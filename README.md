@@ -118,11 +118,14 @@ Everything has a switch in the Settings window. They are also plain keys on the 
 | `visualizers` | `bars,mirror,wave,line` | which styles you can pick from (the style picker and the Media tab's switcher). `dots` and `fire` start off (a style you had already chosen stays on). They are drawn by a fragment shader on the GPU, so they are cheap; if the shader can't load they fall back to a slower CPU drawing |
 | `extrasShown` | `4` | how many extras at once (0 hides them and the divider) |
 | `extraStyle` | `plain` | `plain`, `border` or `button` |
+| `panelStyle` | `attached` | `attached` (a tab grown from the bar) or `floating` (a separate card with a gap) |
 | `rotateSeconds` | `6` | seconds per page when extras swap |
 | `soonMinutes` | `15` | events this close are drawn in the accent color |
 | `notifyMinutes` | `5` | desktop notification this many minutes before an event (0 = off) |
 | `chipHorizonHours`, `chipMaxChars` | `12`, `22` | when the event chip appears, and how long its title may be |
 | `peekOnHover`, `tideLine` | `true` | hover peek, day-progress line |
+| `openOnHover` | `false` | hovering opens the full panel (instead of the peek); click pins it |
+| `hoverDelay` | `160` | ms to rest on the widget before a hover opens the panel (0-600) |
 | `weekStart` | `monday` | month grid |
 | `weatherCity`, `weatherLat`, `weatherLon`, `units` | | picked in Settings → Weather; `metric` or `imperial` |
 | `worldClocks` | | comma-separated IANA zones, up to 6 |

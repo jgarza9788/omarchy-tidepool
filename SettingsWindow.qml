@@ -323,9 +323,28 @@ FloatingWindow {
           Item { width: 1; height: Style.space(8) }
 
           SettingRow {
-            label: "Hover peek"
-            description: "Show the next three events when hovering."
-            Switch { checked: win.cfg.peekOnHover; onToggled: win.set({ peekOnHover: !win.cfg.peekOnHover }) }
+            label: "On hover"
+            description: "Nothing, a peek at the next three events, or the full panel (click to keep it open)."
+            Choice {
+              options: [{ label: "Nothing", value: "none" }, { label: "Peek", value: "peek" }, { label: "Full panel", value: "panel" }]
+              value: win.cfg.openOnHover ? "panel" : win.cfg.peekOnHover ? "peek" : "none"
+              onPicked: function (v) { win.set({ peekOnHover: v === "peek", openOnHover: v === "panel" }) }
+            }
+          }
+          SettingRow {
+            label: "Panel"
+            description: "Attached to the bar, or a separate card floating just off it."
+            Choice {
+              options: [{ label: "Attached", value: "attached" }, { label: "Not attached", value: "floating" }]
+              value: win.cfg.panelStyle
+              onPicked: function (v) { win.set({ panelStyle: v }) }
+            }
+          }
+          SettingRow {
+            visible: win.cfg.openOnHover
+            label: "Hover delay"
+            description: "How long to rest on the widget before the panel opens."
+            Stepper { value: win.cfg.hoverDelay; from: 0; to: 600; step: 40; suffix: " ms"; onChanged: function (v) { win.set({ hoverDelay: v }) } }
           }
           SettingRow {
             label: "Day-progress line"

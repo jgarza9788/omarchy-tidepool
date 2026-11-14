@@ -99,7 +99,14 @@ BarWidget {
   readonly property bool opened: panelLoader.item ? panelLoader.item.opened === true : false
   function open() { if (panelLoader.item) panelLoader.item.open() }
   function close() { if (panelLoader.item) panelLoader.item.close() }
-  function togglePanel() { if (panelLoader.item) panelLoader.item.toggle() }
+  function togglePanel() {
+    // A click on a hover-opened panel keeps it open instead of closing it.
+    if (opened && hoverOpened) { pinHover(); return }
+    if (panelLoader.item) panelLoader.item.toggle()
+  }
+  // Opened by resting on the widget (see "Hover open" below).
+  property bool hoverOpened: false
+  function pinHover() { hoverOpened = false; hoverLeave.stop() }
   // The settings window is created fresh on every open. Reusing one window
   // object let it get stuck (after a lock/unlock the show request silently did
   // nothing), and a new one cannot be stale. The short delay lets a closing
@@ -147,6 +154,7 @@ BarWidget {
   }
   function openExtra(name) {
     var tab = extraTabs[name] || "agenda"
+    if (opened && hoverOpened) { pinHover(); showTab(tab); return }
     if (opened && panelLoader.item && panelLoader.item.tab === tab) close()
     else showTab(tab)
   }
@@ -276,6 +284,7 @@ BarWidget {
 
     onPressed: function (b) {
       peekDelay.stop()
+      hoverDwell.stop()
       if (b === Qt.RightButton) root.cycleMode()
       else if (b === Qt.MiddleButton) { if (root.bar) root.bar.run("omarchy-menu-timezone") }
       else if (root.hoveredExtra !== "") { peek.open = false; root.openExtra(root.hoveredExtra) }
@@ -502,12 +511,36 @@ BarWidget {
   Behavior on contentWidth { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
 
   // ── Hover peek ────────────────────────────────────────────────────────────
-  readonly property bool pointerOver: button.tooltipHovered || peek.containsMouse
+  readonly property bool panelPointer: panelLoader.item ? panelLoader.item.pointerInside === true : false
+  readonly property bool pointerOver: button.tooltipHovered || peek.containsMouse || (opened && panelPointer)
   onPointerOverChanged: {
+    if (cfg.openOnHover) {
+      if (pointerOver) { hoverLeave.stop(); if (!opened) hoverDwell.restart() }
+      else { hoverDwell.stop(); if (hoverOpened && opened) hoverLeave.restart() }
+      return
+    }
     if (pointerOver && cfg.peekOnHover && !opened) { peekClose.stop(); peekDelay.restart() }
     else { peekDelay.stop(); peekClose.restart() }
   }
-  onOpenedChanged: if (opened) { peekDelay.stop(); peek.open = false }
+  onOpenedChanged: {
+    if (opened) { peekDelay.stop(); peek.open = false }
+    else { hoverOpened = false; hoverLeave.stop() }
+  }
+  // Hover open: rest on the widget for hoverDelay and the full panel opens
+  // (on the tab of the extra you are over, if any). It closes a moment after
+  // the pointer leaves both the widget and the card; a click pins it.
+  Timer {
+    id: hoverDwell
+    interval: root.cfg.hoverDelay
+    onTriggered: {
+      if (!root.pointerOver || root.opened || !root.cfg.openOnHover || !panelLoader.item) return
+      root.hoverOpened = true
+      panelLoader.item.seedAnchorHover()
+      if (root.hoveredExtra !== "") root.showTab(root.extraTabs[root.hoveredExtra] || "agenda")
+      else root.open()
+    }
+  }
+  Timer { id: hoverLeave; interval: 350; onTriggered: if (!root.pointerOver && root.hoverOpened && root.opened) root.close() }
   Timer { id: peekDelay; interval: 280; onTriggered: if (root.pointerOver && !root.opened) peek.open = true }
   Timer { id: peekClose; interval: 160; onTriggered: if (!root.pointerOver) peek.open = false }
 
